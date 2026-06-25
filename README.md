@@ -119,6 +119,64 @@ curl http://localhost:3000/health
 - In Supabase, `select count(*) from packages;` returns `14`.
 - `curl /health` returns `ok: true`.
 
+## Step 2: Twilio Sandbox Echo Test
+
+Proves the full loop: **inbound WhatsApp → webhook → find/create lead → log inbound →
+send test reply → log outbound**. No Claude yet — the reply is a fixed test message.
+
+### One-time prerequisites
+
+- Step 1 done: migration applied, `npm run seed` run, Supabase env set.
+- A [Twilio account](https://www.twilio.com/console) with the **WhatsApp Sandbox**
+  enabled (Console → Messaging → Try it out → Send a WhatsApp message).
+- A tunnel to expose your local server: [ngrok](https://ngrok.com) or Cloudflare Tunnel.
+
+### Configure environment
+
+Add your Twilio credentials to `.env` (all from the Twilio Console):
+
+```
+TWILIO_ACCOUNT_SID=ACxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxx
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886   # sandbox sender (default)
+```
+
+For the sandbox echo, leave `SKIP_TWILIO_SIGNATURE_VALIDATION=true` (the default).
+To validate signatures later, set it to `false` **and** set `PUBLIC_WEBHOOK_BASE_URL`
+to the exact tunnel URL Twilio calls — otherwise requests are rejected as 403.
+
+### Steps
+
+1. **Start the dev server:**
+   ```bash
+   npm run dev
+   ```
+2. **Expose it** (in a second terminal):
+   ```bash
+   ngrok http 3000          # or: cloudflared tunnel --url http://localhost:3000
+   ```
+   Copy the public HTTPS URL, e.g. `https://abcd-1234.ngrok-free.app`.
+3. **Point the Twilio Sandbox at the webhook.** In the Twilio Console →
+   Messaging → Try it out → WhatsApp Sandbox → **Sandbox settings**, set
+   **"When a message comes in"** to:
+   ```
+   https://YOUR_PUBLIC_URL/webhooks/twilio/whatsapp
+   ```
+   Method: **HTTP POST**. Save.
+4. **Join the sandbox** from your personal WhatsApp — send the `join <code>`
+   message Twilio shows you.
+5. **Send a test message** (e.g. "Hi, is Pakistan safe?").
+
+### Confirm
+
+1. **WhatsApp** receives:
+   > Thanks for messaging Destination Pakistan. This is Asaan Intelligence test
+   > mode — we received your message and a travel concierge will qualify your trip shortly.
+2. **Supabase `leads`** has a row for your number
+   (`select * from leads order by created_at desc limit 1;`).
+3. **Supabase `conversations`** has two rows for that `lead_id`: a `customer`
+   row (your message) and an `agent` row (the reply), each with a `twilio_sid`.
+
 ## Conventions
 
 - **Secrets** live only in `.env`; `.env` is git-ignored. `.env.example` documents every key.

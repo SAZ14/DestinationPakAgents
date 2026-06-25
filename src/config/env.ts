@@ -43,7 +43,11 @@ export const env = {
   // Server
   port: Number(optional('PORT') ?? 3000),
   publicBaseUrl: optional('PUBLIC_BASE_URL') ?? 'http://localhost:3000',
-  skipTwilioSignatureValidation: bool('SKIP_TWILIO_SIGNATURE_VALIDATION', false),
+  // Exact public base URL Twilio uses to reach the webhook (your ngrok/tunnel
+  // URL). Used to validate Twilio request signatures. Falls back to
+  // publicBaseUrl when unset.
+  publicWebhookBaseUrl: optional('PUBLIC_WEBHOOK_BASE_URL'),
+  skipTwilioSignatureValidation: bool('SKIP_TWILIO_SIGNATURE_VALIDATION', true),
 
   // Supabase
   supabaseUrl: optional('SUPABASE_URL'),

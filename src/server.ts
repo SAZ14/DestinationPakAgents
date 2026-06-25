@@ -14,6 +14,7 @@
 
 import express from 'express';
 import { env } from './config/env';
+import { twilioWebhookRouter } from './webhooks/twilio';
 
 export function createApp(): express.Express {
   const app = express();
@@ -26,14 +27,14 @@ export function createApp(): express.Express {
     res.json({ ok: true, service: 'asaan-intelligence', ts: new Date().toISOString() });
   });
 
+  // Twilio WhatsApp inbound webhook (Step 2).
+  app.use('/webhooks/twilio', twilioWebhookRouter());
+
   app.get('/', (_req, res) => {
     res
       .type('text/plain')
       .send('Asaan Intelligence — WhatsApp concierge for Destination Pakistan. See /health.');
   });
-
-  // Webhook routes are mounted here in Step 2:
-  //   app.use('/webhooks/twilio', twilioWebhookRouter);
 
   return app;
 }
