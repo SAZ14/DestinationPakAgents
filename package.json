@@ -1,0 +1,41 @@
+{
+  "name": "asaan-intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WhatsApp AI travel concierge + lead-recovery MVP for Destination Pakistan",
+  "type": "commonjs",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "seed": "ts-node src/scripts/seed.ts",
+    "job:recovery": "ts-node src/jobs/leadRecovery.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "keywords": [
+    "whatsapp",
+    "twilio",
+    "anthropic",
+    "supabase",
+    "travel",
+    "concierge"
+  ],
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "twilio": "^5.3.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.4"
+  }
+}
