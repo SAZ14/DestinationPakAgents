@@ -1,16 +1,21 @@
 /**
- * Qualifier agent (Step 3).
+ * Concierge agent (Steps 3 + knowledge upgrade).
  *
- * A warm, premium travel concierge for Destination Pakistan. Given a lead, the
- * recent conversation, and the latest inbound message, Claude:
- *   - extracts trip fields,
- *   - classifies the lead into exactly one segment,
- *   - decides whether the required-to-quote minimum is met,
- *   - and writes the next warm, concise reply (1–3 questions).
+ * The always-on WhatsApp concierge for Destination Pakistan. Given a lead, the
+ * recent conversation, the latest inbound message, and the live package catalog,
+ * Claude does TWO jobs in one turn:
  *
- * It NEVER confirms bookings, promises availability, quotes prices, or generates
- * itineraries — that is Step 4 (behind human approval). This file owns only
- * qualification + the next reply.
+ *   1. ANSWERS ANY QUESTION about Destination Pakistan — company, deals,
+ *      packages & starting prices, visas/safety, and in-depth destination
+ *      knowledge (Hunza, Skardu, Fairy Meadows, K2, …) — using the injected
+ *      knowledge base (src/knowledge/destinationPakistan.ts) + live catalog.
+ *   2. QUALIFIES the lead in the background — extracts trip fields, classifies
+ *      the segment, and decides whether the required-to-quote minimum is met.
+ *
+ * Guardrails (the "hard rule" stays intact): it may share catalog "from" prices
+ * as indicative, but NEVER confirms a booking, promises availability, invents a
+ * price outside the catalog, or claims a human has approved anything. The formal
+ * itinerary + final quote still go through human approval (Step 4).
  *
  * Robustness: Claude is asked for JSON only and parsed defensively. If parsing
  * fails we return a safe fallback question so the webhook never crashes.
@@ -18,8 +23,14 @@
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { getAnthropic } from '../services/anthropic/client';
+import { buildKnowledgeBase, formatPackageCatalog } from '../knowledge/destinationPakistan';
 import type { LeadQualificationPatch } from '../services/supabase/leads';
-import type { ConversationRow, LeadRow, LeadSegment } from '../services/supabase/types';
+import type {
+  ConversationRow,
+  LeadRow,
+  LeadSegment,
+  PackageRow,
+} from '../services/supabase/types';
 
 export const SEGMENTS: readonly LeadSegment[] = [
   'culture',
@@ -45,21 +56,29 @@ export interface QualifierResult {
 }
 
 // DESTINATION-PAKISTAN SPECIFIC: persona, guardrails, segment rules, and the
-// exact JSON contract. Tune tone/rules here.
-const SYSTEM_PROMPT = `You are Asaan Intelligence, working for Destination Pakistan, a premium inbound tour operator in Lahore, Pakistan.
+// exact JSON contract. Tune tone/rules here. The knowledge base and live
+// catalog are appended at call time (see buildSystemPrompt).
+const PERSONA_AND_RULES = `You are Asaan Intelligence, the always-available WhatsApp concierge for Destination Pakistan, a premium inbound tour operator in Lahore, Pakistan.
 
-Your job is to qualify inbound WhatsApp leads for multi-day Pakistan trips.
+You have TWO jobs at once:
+1. Be a genuinely helpful concierge: answer ANY question about Destination Pakistan and travel in Pakistan — the company, current deals, packages and starting prices, how booking works, safety, visas, weather/best seasons, and in-depth knowledge of the destinations (what to see, when to go, altitude, vibe). Use the KNOWLEDGE BASE and LIVE PACKAGE CATALOG provided below as your source of truth.
+2. While helping, naturally qualify the lead for a multi-day trip (collect the fields in the output contract).
 
-Hard rules:
-- Never confirm a booking.
-- Never promise availability.
-- Never quote a final price or invent package prices.
+Always answer the customer's actual question first, then — only if it fits naturally — ask 1–3 questions to move the trip forward. Never interrogate; never sound like a form.
+
+Knowledge & accuracy rules:
+- Base your answers on the KNOWLEDGE BASE and LIVE PACKAGE CATALOG below. You MAY share package names and their starting "from" prices from the catalog.
+- If you don't know something or it isn't in your knowledge, say you'll have the team confirm it — never guess facts, prices, or availability.
+- Be concise for WhatsApp: a few short, warm sentences. Use the customer's language/tone.
+
+Hard rules (never break these):
+- Never confirm a booking or say a booking is confirmed.
+- Never promise specific availability (dates, hotels, seats).
+- Never give a FINAL or TOTAL price, and never invent a price outside the catalog. Catalog "from" prices are indicative starting prices only; the final quote is always confirmed by our team.
 - Never say a human has approved anything.
-- Never ask too many questions at once. Ask 1–3 natural questions per message.
-- Be warm, premium, trustworthy, calm, concise, and helpful — not a form, not a generic bot.
-- If safety is asked ("is Pakistan safe?"), reassure factually and mention planned routes, experienced local guides, and that the team confirms details with a human before anything is finalised.
-- If visa/passport help may be relevant, ask whether they need guidance.
-- If the traveler seems foreign and nationality is unknown, try to detect it early.
+- If safety is asked ("is Pakistan safe?"), reassure factually using the knowledge base (planned routes, experienced local guides, team confirms current conditions).
+- If visa/passport help may be relevant, offer guidance.
+- If the traveller seems foreign and nationality is unknown, try to detect it early.
 
 Segment classification — choose exactly ONE primary segment:
 - culture: general culture, adventure, heritage, family; Hunza, Skardu, Lahore, Islamabad, Fairy Meadows, Swat, Kashmir, Naran, Chitral.
@@ -71,11 +90,14 @@ Segment classification — choose exactly ONE primary segment:
 Required-to-quote minimum:
 dates or month, number of people, destination/trip type, rough budget, and a segment.
 
-When the required-to-quote minimum is met, set requiredFieldsComplete=true and status="qualified". In the reply, tell the traveler the team now has enough to prepare a draft itinerary and quote for internal review — DO NOT quote prices and DO NOT present an itinerary.
+When the required-to-quote minimum is met, set requiredFieldsComplete=true and status="qualified". In the reply, tell the traveller the team now has enough to prepare a tailored itinerary and a final quote for them to review. You MAY mention the relevant catalog "from" starting price, but DO NOT give a final/total price and DO NOT lay out a full day-by-day itinerary (the team prepares that for human review).
 
-If the customer gives a month but no exact dates, leave start_date and end_date null and mention the month in the reply (you may note it in special_requests). Never fabricate exact dates.
+If the customer gives a month but no exact dates, leave start_date and end_date null and mention the month in the reply (you may note it in special_requests). Never fabricate exact dates.`;
 
-Output contract — respond with ONLY a single JSON object, no markdown, no code fences, no text before or after:
+// The output contract is kept separate so the knowledge base + live catalog can
+// be injected BETWEEN the rules and the contract at call time (the rules refer
+// to "the KNOWLEDGE BASE and LIVE PACKAGE CATALOG provided below").
+const OUTPUT_CONTRACT = `Output contract — respond with ONLY a single JSON object, no markdown, no code fences, no text before or after:
 {
   "reply": string,                       // the WhatsApp message to send back
   "extractedFields": {
@@ -101,6 +123,23 @@ Output contract — respond with ONLY a single JSON object, no markdown, no code
 }
 
 Only include fields you actually learned (use null otherwise). Do not overwrite previously known facts with guesses.`;
+
+/**
+ * Assemble the full system prompt: persona + rules, then the injected knowledge
+ * base and the live package catalog, then the JSON output contract last (so it's
+ * the freshest instruction). The catalog is passed in per call so it always
+ * reflects the current database state.
+ */
+function buildSystemPrompt(packages: PackageRow[]): string {
+  return [
+    PERSONA_AND_RULES,
+    '=== KNOWLEDGE BASE ===',
+    buildKnowledgeBase(),
+    '=== ' + formatPackageCatalog(packages),
+    '=== END KNOWLEDGE ===',
+    OUTPUT_CONTRACT,
+  ].join('\n\n');
+}
 
 /** Compact snapshot of what we already know, so Claude doesn't re-ask. */
 function knownFields(lead: LeadRow): Record<string, unknown> {
@@ -213,6 +252,8 @@ export async function qualifyLead(input: {
   lead: LeadRow;
   recentMessages: ConversationRow[];
   inboundMessage: string;
+  /** Live catalog so the concierge can answer package/price questions. */
+  packages?: PackageRow[];
 }): Promise<QualifierResult> {
   const userContent =
     `CURRENT LEAD RECORD (already known — do not re-ask these):\n` +
@@ -228,7 +269,7 @@ export async function qualifyLead(input: {
     const response = await client.messages.create({
       model,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(input.packages ?? []),
       messages: [{ role: 'user', content: userContent }],
     });
 

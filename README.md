@@ -4,11 +4,14 @@ A WhatsApp-based AI travel concierge **+ lead-recovery** system for **Destinatio
 ([destinationpakistan.travel](https://destinationpakistan.travel)) — a 10-year-old inbound
 tour operator in Gulberg, Lahore selling premium multi-day trips (priced in USD) to foreign tourists.
 
-The MVP does exactly two jobs, in priority order:
+The MVP does these jobs, in priority order:
 
-1. **Never miss a lead** — instantly answer and qualify inbound WhatsApp leads 24/7, then
-   prepare a quote + draft itinerary and route it to a human for approval.
-2. **Recover dead leads** — automatically segment leads and send staff-approved follow-ups to
+1. **Be the always-on concierge** — answer *any* customer question 24/7 (company,
+   deals, packages & starting prices, safety, visas, and in-depth knowledge of every
+   destination), in a warm, premium voice.
+2. **Never miss a lead** — qualify inbound WhatsApp leads as it chats, then prepare a
+   quote + draft itinerary and route it to a human for approval.
+3. **Recover dead leads** — automatically segment leads and send staff-approved follow-ups to
    people who asked for a price and vanished.
 
 > **Hard rule — human-in-the-loop is non-negotiable.** The AI never confirms a booking by
@@ -46,7 +49,8 @@ src/
     supabase/    Postgres client + row types
     twilio/      WhatsApp send/receive (Step 2)
     anthropic/   Claude client (Step 3)
-  agents/        Claude-backed agents: qualifier, quote, recovery, commands (Steps 3-6)
+  agents/        Claude-backed agents: concierge/qualifier, quote, recovery, commands (Steps 3-6)
+  knowledge/     Destination Pakistan knowledge base the concierge answers from
   webhooks/      Twilio inbound webhook handlers (Step 2)
   jobs/          scheduled jobs — lead recovery (Step 5)
   seed/          Destination Pakistan catalog (real packages)
@@ -238,6 +242,40 @@ Send these from your WhatsApp (each new number is a fresh lead):
   noted in `special_requests` — dates are never fabricated.
 - If Claude is unreachable or returns unparseable output, the bot sends a safe
   fallback question and the webhook still succeeds (the inbound message is logged).
+
+## Concierge knowledge (answers any question, 24/7)
+
+The concierge isn't just a qualifier — it answers **any** Destination Pakistan
+question (company, deals, packages & starting prices, safety, visas, best seasons,
+and in-depth destination knowledge) while qualifying the lead in the background.
+
+It answers from two sources, injected into the agent on **every** message:
+
+1. **`src/knowledge/destinationPakistan.ts`** — an editable knowledge base:
+   company profile, how booking works, safety/visa info, an FAQ, a **`DEALS`
+   section staff edit to advertise promotions**, and **in-depth guides** for every
+   destination (Hunza, Skardu, Fairy Meadows, Chitral, Naran, Swat, Kashmir,
+   Islamabad, Lahore, and the treks incl. K2 Base Camp).
+2. **The live package catalog** — loaded from the database each message, so the
+   bot always knows current packages and their starting "from" prices.
+
+**Pricing guardrail stays intact:** it may share catalog *"from"* starting prices
+as indicative, but never gives a final/total price, never invents a price, and
+never confirms a booking or availability — the final quote always goes through
+human approval (Step 4).
+
+> **To add a deal or new info:** edit `src/knowledge/destinationPakistan.ts`
+> (e.g. the `DEALS` constant) and restart the server — no code changes elsewhere.
+> To add a new package + price, add it to `src/seed/packages.ts` and run
+> `npm run seed`; the concierge picks it up automatically.
+
+### Quick test
+
+- *"Is Pakistan safe for tourists?"* → factual reassurance from the knowledge base.
+- *"Tell me about Hunza."* → an in-depth, accurate answer (Rakaposhi, Attabad Lake,
+  Baltit Fort, best season…).
+- *"Do you have any deals / what trips do you offer for Hunza and how much?"* →
+  lists relevant catalog packages with their starting "from" prices, no final quote.
 
 ## Step 4: Quote + Itinerary Drafting + Staff Approval
 

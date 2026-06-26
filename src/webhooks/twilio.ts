@@ -102,14 +102,19 @@ async function handleInbound(payload: InboundPayload): Promise<void> {
     twilioSid: payload.messageSid,
   });
 
-  // 3. Load recent history (includes the message we just logged).
-  const recentMessages = await getRecentConversationsForLead(lead.id, 12);
+  // 3. Load recent history (includes the message we just logged) and the live
+  //    catalog so the concierge can answer package/price/deal questions.
+  const [recentMessages, packages] = await Promise.all([
+    getRecentConversationsForLead(lead.id, 12),
+    listActivePackages(),
+  ]);
 
-  // 4. Run the qualifier. It never throws — on failure it returns the fallback.
+  // 4. Run the concierge. It never throws — on failure it returns the fallback.
   const result = await qualifyLead({
     lead,
     recentMessages,
     inboundMessage: payload.body,
+    packages,
   });
 
   // 5. Persist extracted fields + status. Move 'new' leads at least to
