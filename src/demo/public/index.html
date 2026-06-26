@@ -138,7 +138,8 @@
 </div>
 
 <script>
-const sessionId = 'demo_' + Math.random().toString(36).slice(2);
+const _urlSession = new URLSearchParams(location.search).get('s');
+const sessionId = _urlSession || ('demo_' + Math.random().toString(36).slice(2));
 const SAMPLES = [
   "Is Pakistan safe for tourists?",
   "Tell me about Hunza",
@@ -267,8 +268,22 @@ async function resetDemo() {
   bubble('agent', "Assalam-o-Alaikum! 👋 Welcome to Destination Pakistan. I'm your travel concierge — ask me anything about Pakistan, our trips, visas, or let's start planning your journey.");
 }
 
+function renderMessages(messages) {
+  document.getElementById('chat').innerHTML = '';
+  for (const m of messages) bubble(m.role, m.body, m.role === 'agent' && /^#|\n- |Day \d/.test(m.body));
+}
+
+async function loadExisting() {
+  const r = await fetch('/api/demo/state?sessionId=' + encodeURIComponent(sessionId));
+  const res = await r.json();
+  renderMessages(res.messages);
+  renderAll(res);
+}
+
 renderChips();
-resetDemo();
+// ?s=<id> opens an existing session read-only (used for shareable views/screenshots);
+// otherwise start a fresh demo.
+if (_urlSession) loadExisting(); else resetDemo();
 </script>
 </body>
 </html>
