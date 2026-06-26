@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "demo": "ts-node-dev --respawn --transpile-only src/demo/server.ts",
     "seed": "ts-node src/scripts/seed.ts",
     "job:recovery": "ts-node src/jobs/leadRecovery.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",

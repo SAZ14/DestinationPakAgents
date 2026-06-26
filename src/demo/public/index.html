@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Asaan Intelligence — Destination Pakistan Concierge (Demo)</title>
+<style>
+  :root {
+    --green: #075e54; --green-light: #25d366; --bubble-out: #d9fdd3;
+    --bubble-in: #ffffff; --bg: #ece5dd; --ops-bg: #0f172a; --ops-card: #1e293b;
+    --ops-line: #334155; --accent: #38bdf8; --warn: #fbbf24; --ok: #34d399; --bad: #f87171;
+    --text: #0f172a; --muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f1f5f9; color: var(--text); }
+  header { background: var(--green); color: #fff; padding: 14px 22px; display: flex;
+    align-items: center; justify-content: space-between; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header .sub { font-size: 12px; opacity: .8; }
+  header button { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  header button:hover { background: rgba(255,255,255,.25); }
+
+  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 52px); }
+  @media (max-width: 860px) { .stage { grid-template-columns: 1fr; height: auto; } }
+
+  /* ---- Customer (WhatsApp) ---- */
+  .phone { display: flex; flex-direction: column; background: var(--bg);
+    background-image: linear-gradient(rgba(229,221,213,.6), rgba(229,221,213,.6));
+    border-right: 1px solid #cbd5e1; min-height: 0; }
+  .phone .bar { background: var(--green); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .phone .bar .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--green-light);
+    display: grid; place-items: center; font-weight: 700; }
+  .phone .bar .who { font-size: 14px; font-weight: 600; }
+  .phone .bar .who small { display: block; font-weight: 400; opacity: .8; font-size: 11px; }
+  .chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 78%; padding: 8px 11px; border-radius: 10px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.08); white-space: pre-wrap; word-wrap: break-word; }
+  .msg.in { background: var(--bubble-in); align-self: flex-start; border-top-left-radius: 2px; }
+  .msg.out { background: var(--bubble-out); align-self: flex-end; border-top-right-radius: 2px; }
+  .msg.itin { font-family: ui-monospace, monospace; font-size: 12.5px; max-width: 92%; }
+  .composer { display: flex; gap: 8px; padding: 10px; background: #f0f2f5; }
+  .composer input { flex: 1; border: none; border-radius: 20px; padding: 11px 16px; font-size: 14px; outline: none; }
+  .composer button { background: var(--green); color: #fff; border: none; width: 44px; height: 44px;
+    border-radius: 50%; cursor: pointer; font-size: 18px; }
+  .composer button:disabled { opacity: .5; cursor: default; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; background: #f0f2f5; }
+  .chips button { background: #fff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 6px 11px;
+    font-size: 12px; cursor: pointer; color: #334155; }
+  .chips button:hover { background: #e2e8f0; }
+  .typing { font-size: 12px; color: var(--muted); align-self: flex-start; padding: 4px 8px; }
+
+  /* ---- Ops Console ---- */
+  .ops { background: var(--ops-bg); color: #e2e8f0; overflow-y: auto; padding: 18px; min-height: 0; }
+  .ops h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent);
+    margin: 0 0 12px; }
+  .card { background: var(--ops-card); border: 1px solid var(--ops-line); border-radius: 12px;
+    padding: 16px; margin-bottom: 16px; }
+  .lead-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge.new { background: #475569; color: #fff; }
+  .badge.qualifying { background: #1e40af; color: #dbeafe; }
+  .badge.qualified { background: #065f46; color: #d1fae5; }
+  .badge.awaiting_approval { background: #92400e; color: #fef3c7; }
+  .badge.sent { background: #047857; color: #d1fae5; }
+  .grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; }
+  .grid .k { color: var(--muted); }
+  .grid .v { color: #f1f5f9; font-weight: 500; }
+  .grid .v.empty { color: #475569; font-weight: 400; }
+  .seg-pill { display: inline-block; background: #0e7490; color: #cffafe; font-size: 11px;
+    padding: 2px 9px; border-radius: 12px; text-transform: uppercase; letter-spacing: .04em; }
+
+  .quote-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .quote-head .title { font-size: 15px; font-weight: 700; color: #fff; }
+  .price { font-size: 22px; font-weight: 800; color: var(--ok); }
+  .price small { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .warn-flag { background: #78350f; color: var(--warn); font-size: 12px; padding: 8px 12px;
+    border-radius: 8px; margin: 10px 0; border: 1px solid #b45309; }
+  .note { font-size: 12px; color: var(--muted); margin: 8px 0; font-style: italic; }
+  .qmsg { background: #0b1220; border: 1px dashed var(--ops-line); border-radius: 8px; padding: 11px;
+    font-size: 13px; line-height: 1.45; margin: 10px 0; color: #cbd5e1; }
+  .itinerary { background: #0b1220; border: 1px solid var(--ops-line); border-radius: 8px; padding: 12px;
+    max-height: 260px; overflow-y: auto; font-size: 12.5px; line-height: 1.5; color: #cbd5e1; }
+  .itinerary h1,.itinerary h2,.itinerary h3 { color: var(--accent); font-size: 13px; margin: 10px 0 4px; }
+  .itinerary strong { color: #fff; }
+  .itinerary ul { margin: 4px 0; padding-left: 18px; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  .actions button { flex: 1; border: none; padding: 12px; border-radius: 9px; font-size: 14px;
+    font-weight: 700; cursor: pointer; }
+  .approve { background: var(--ok); color: #064e3b; }
+  .reject { background: transparent; color: var(--bad); border: 1px solid var(--bad) !important; }
+  .actions button:disabled { opacity: .5; cursor: default; }
+  .sent-banner { background: #064e3b; color: var(--ok); padding: 12px; border-radius: 9px;
+    text-align: center; font-weight: 700; margin-top: 12px; }
+  .empty-ops { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .pulse { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Asaan Intelligence</h1>
+    <div class="sub">WhatsApp Travel Concierge — Destination Pakistan · live demo</div>
+  </div>
+  <button onclick="resetDemo()">↺ Reset demo</button>
+</header>
+
+<div class="stage">
+  <!-- Customer side -->
+  <section class="phone">
+    <div class="bar">
+      <div class="avatar">DP</div>
+      <div class="who">Destination Pakistan<small id="presence">online</small></div>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="chips" id="chips"></div>
+    <div class="composer">
+      <input id="input" placeholder="Type a message…" autocomplete="off"
+        onkeydown="if(event.key==='Enter')send()" />
+      <button id="sendBtn" onclick="send()">➤</button>
+    </div>
+  </section>
+
+  <!-- Ops side -->
+  <section class="ops">
+    <h2>⚙ Staff Ops Console</h2>
+    <div class="card">
+      <div class="lead-head">
+        <strong>Lead Record</strong>
+        <span class="badge new" id="statusBadge">new</span>
+      </div>
+      <div class="grid" id="leadGrid"></div>
+    </div>
+    <div id="quoteArea"></div>
+  </section>
+</div>
+
+<script>
+const sessionId = 'demo_' + Math.random().toString(36).slice(2);
+const SAMPLES = [
+  "Is Pakistan safe for tourists?",
+  "Tell me about Hunza",
+  "Do you offer photography trips? Any deals?",
+  "I'm Sarah from the UK, 2 of us, Hunza + Skardu, 13 days in July, ~$2500pp, premium hotels",
+];
+const FIELDS = [
+  ['name','Name'],['nationality','Nationality'],['segment','Segment'],['num_people','Travellers'],
+  ['start_date','Start'],['end_date','End'],['budget_usd','Budget/pp'],['luxury_level','Level'],
+  ['destinations','Destinations'],['dietary','Dietary'],['visa_help','Visa help'],['special_requests','Notes'],
+];
+let busy = false;
+
+function renderChips() {
+  document.getElementById('chips').innerHTML = SAMPLES
+    .map(s => `<button onclick="quick(this)">${s}</button>`).join('');
+}
+function quick(btn) { document.getElementById('input').value = btn.textContent; send(); }
+
+function bubble(role, text, itin) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'customer' ? 'out' : 'in') + (itin ? ' itin' : '');
+  div.textContent = text;
+  document.getElementById('chat').appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function md(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.*)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^\s*[-*] (.*)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>')
+    .replace(/\n/g,'<br>');
+}
+
+function renderLead(lead) {
+  document.getElementById('statusBadge').textContent = (lead.status || 'new').replace('_',' ');
+  document.getElementById('statusBadge').className = 'badge ' + (lead.status || 'new');
+  document.getElementById('leadGrid').innerHTML = FIELDS.map(([k,label]) => {
+    let v = lead[k];
+    if (k === 'destinations') v = (v && v.length) ? v.join(', ') : '';
+    if (k === 'visa_help') v = v ? 'yes' : '';
+    if (k === 'budget_usd' && v) v = '$' + v;
+    if (k === 'segment' && v) return `<div class="k">${label}</div><div class="v"><span class="seg-pill">${v}</span></div>`;
+    const empty = (v === null || v === undefined || v === '');
+    return `<div class="k">${label}</div><div class="v ${empty?'empty':''}">${empty?'—':v}</div>`;
+  }).join('');
+}
+
+function renderQuote(q) {
+  const area = document.getElementById('quoteArea');
+  if (!q) { area.innerHTML = '<div class="card"><div class="empty-ops">No quote yet. Once the lead is qualified (dates, group size, destinations, budget, segment), the concierge auto-drafts a quote here for staff approval.</div></div>'; return; }
+  const priceBlock = q.needsHumanPricing
+    ? `<div class="warn-flag">⚠️ Budget is below the matched package — flagged <strong>needs human pricing</strong>. A human sets the price before this can be sent.</div>`
+    : `<div class="price">$${q.priceUsd}<small> /person (from)</small></div>`;
+  let actions = '';
+  if (q.status === 'awaiting_approval') {
+    actions = `<div class="actions">
+      <button class="approve" onclick="approve()" ${q.needsHumanPricing?'disabled':''}>✓ Approve &amp; send</button>
+      <button class="reject" onclick="reject()">✕ Reject</button></div>`;
+  } else if (q.status === 'sent') {
+    actions = `<div class="sent-banner">✓ Approved &amp; sent to customer</div>`;
+  } else if (q.status === 'rejected') {
+    actions = `<div class="note">Quote rejected — lead kept as qualified.</div>`;
+  }
+  area.innerHTML = `<div class="card">
+    <div class="quote-head"><span class="title">${q.packageName || 'Custom trip'}</span></div>
+    ${priceBlock}
+    <div class="note">Match: ${q.matchNote || ''}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">Customer-facing message:</div>
+    <div class="qmsg">${md(q.quoteMessage)}</div>
+    <div style="font-size:12px;color:var(--muted)">Drafted itinerary:</div>
+    <div class="itinerary">${md(q.itineraryMd)}</div>
+    ${actions}
+  </div>`;
+}
+
+function renderAll(state) { renderLead(state.lead); renderQuote(state.quote); }
+
+async function api(path, payload) {
+  const r = await fetch(path, { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ sessionId, ...payload }) });
+  return r.json();
+}
+
+function setBusy(b) {
+  busy = b;
+  document.getElementById('sendBtn').disabled = b;
+  document.getElementById('presence').textContent = b ? 'typing…' : 'online';
+  document.getElementById('presence').className = b ? 'pulse' : '';
+}
+
+async function send() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text || busy) return;
+  input.value = '';
+  bubble('customer', text);
+  setBusy(true);
+  const res = await api('/api/demo/message', { body: text });
+  setBusy(false);
+  if (!res.ok) { bubble('agent', '⚠ ' + (res.error || 'error')); return; }
+  // The latest agent reply is the last non-customer message.
+  const lastAgent = [...res.messages].reverse().find(m => m.role === 'agent');
+  if (lastAgent) bubble('agent', lastAgent.body);
+  renderAll(res);
+}
+
+async function approve() {
+  const res = await api('/api/demo/approve', {});
+  if (!res.ok) { alert(res.error); return; }
+  // Surface the two delivered messages (quote + itinerary) in the chat.
+  const sent = res.quote;
+  bubble('agent', sent.quoteMessage);
+  bubble('agent', sent.itineraryMd, true);
+  renderAll(res);
+}
+async function reject() { renderAll(await api('/api/demo/reject', {})); }
+
+async function resetDemo() {
+  const res = await api('/api/demo/reset', {});
+  document.getElementById('chat').innerHTML = '';
+  renderAll(res);
+  bubble('agent', "Assalam-o-Alaikum! 👋 Welcome to Destination Pakistan. I'm your travel concierge — ask me anything about Pakistan, our trips, visas, or let's start planning your journey.");
+}
+
+renderChips();
+resetDemo();
+</script>
+</body>
+</html>

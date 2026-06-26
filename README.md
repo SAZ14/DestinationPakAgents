@@ -30,6 +30,36 @@ The MVP does these jobs, in priority order:
 | Config         | `.env` only — no hardcoded secrets or phone numbers |
 | Admin UI       | **None** — staff approve and run admin commands by texting the bot |
 
+## 🎬 Owner Demo (run this first — no Twilio, no Supabase)
+
+A self-contained, browser-based demo that runs the **real concierge + quote
+agents** against the **real knowledge base**, with in-memory state. The only
+thing you need is an Anthropic API key — no database, no Twilio sandbox, no tunnel.
+
+```bash
+npm install
+echo "ANTHROPIC_API_KEY=sk-ant-..." > .env     # the only required key
+npm run demo
+# → open http://localhost:4000
+```
+
+You get a split screen:
+
+- **Left — the customer's WhatsApp.** Ask anything ("Is Pakistan safe?", "Tell me
+  about Hunza", "Do you offer photography trips? Any deals?") or start planning a trip.
+- **Right — the Staff Ops Console.** Watch the lead record fill in live as the
+  concierge qualifies the customer. When the lead is fully qualified, a **quote +
+  itinerary is auto-drafted** and appears here for approval. Click **Approve & send**
+  and the quote is delivered into the customer chat — the full human-in-the-loop loop.
+
+Try the one-click sample prompts at the bottom of the chat. The pricing guardrail
+is live too: if the customer's budget is below the matched package, the quote is
+flagged **needs human pricing** and Approve is blocked until a human sets the price.
+
+> This demo reuses `src/agents/qualifier.ts` and `src/agents/quote.ts` unchanged —
+> it's the same brain that runs in the real WhatsApp pipeline, just with the
+> database/Twilio swapped for an in-memory store and a web UI.
+
 ## Build order (each step is independently testable)
 
 1. **Project setup** — repo, TypeScript, env, migrations, seed. ✅
