@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chief of Staff — WhatsApp demo</title>
+<style>
+  :root{
+    --wa-teal:#008069; --wa-panel:#efeae2; --wa-in:#ffffff; --wa-out:#d9fdd3;
+    --wa-tick:#53bdeb; --ink:#111b21; --muted:#667781;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:#0b141a; color:var(--ink);
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+    padding:24px 12px 36px; min-height:100%;
+  }
+  .title{color:#cfd9df; font-size:14px; letter-spacing:.3px; text-align:center}
+  .title b{color:#e9edef}
+  .phone{
+    width:100%; max-width:430px; height:min(86vh,820px);
+    background:var(--wa-panel); border-radius:28px; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.55), 0 0 0 10px #1f2c34, 0 0 0 12px #2a3942;
+    display:flex; flex-direction:column; position:relative;
+  }
+  /* WhatsApp chat doodle wallpaper */
+  .chat{
+    flex:1; overflow-y:auto; padding:14px 10px 8px;
+    background-color:var(--wa-panel);
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' stroke='%23d1c7b8' stroke-width='1.1' opacity='0.5'><circle cx='20' cy='22' r='7'/><path d='M70 18l8 8M78 18l-8 8'/><path d='M95 70c5 0 9 4 9 9'/><rect x='44' y='66' width='14' height='10' rx='2'/><path d='M16 92h12M16 96h8'/></g></svg>");
+  }
+  .header{
+    background:var(--wa-teal); color:#fff; display:flex; align-items:center; gap:10px;
+    padding:12px 12px; flex:0 0 auto;
+  }
+  .back{font-size:20px;opacity:.95}
+  .avatar{
+    width:40px;height:40px;border-radius:50%;background:#0a8d74;
+    display:flex;align-items:center;justify-content:center;font-size:20px;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.15);
+  }
+  .who{line-height:1.2}
+  .who .name{font-weight:600;font-size:16px}
+  .who .sub{font-size:12px;opacity:.85}
+  .hdr-icons{margin-left:auto;display:flex;gap:16px;font-size:18px;opacity:.95}
+
+  .row{display:flex;margin:5px 4px}
+  .row.in{justify-content:flex-start}
+  .row.out{justify-content:flex-end}
+  .bubble{
+    max-width:82%; padding:6px 9px 7px; border-radius:9px; font-size:14.5px;
+    line-height:1.34; box-shadow:0 1px .5px rgba(11,20,26,.13); position:relative;
+    white-space:normal; word-wrap:break-word;
+  }
+  .in .bubble{background:var(--wa-in); border-top-left-radius:2px}
+  .out .bubble{background:var(--wa-out); border-top-right-radius:2px}
+  .bubble .meta{font-size:10.5px;color:var(--muted);float:right;margin:6px 0 -2px 8px}
+  .out .bubble .meta .tick{color:var(--wa-tick);font-weight:700;margin-left:2px}
+  .bubble strong{font-weight:700}
+  .bubble .li{display:block;padding-left:2px}
+  .bubble.draft{background:#fff;border-left:3px solid var(--wa-teal)}
+  .bubble.system{background:#ffeecf;color:#7a5b12;font-size:12.5px;max-width:92%;
+    margin:6px auto;border-radius:8px;text-align:center;box-shadow:none}
+  .ackline{font-style:italic;color:#3f6b62}
+
+  .typing{display:inline-flex;gap:4px;align-items:center;padding:9px 12px}
+  .typing i{width:7px;height:7px;border-radius:50%;background:#9aa6ab;display:inline-block;
+    animation:blink 1.2s infinite both}
+  .typing i:nth-child(2){animation-delay:.2s}
+  .typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+
+  .footer{flex:0 0 auto;background:var(--wa-panel);padding:8px 8px 10px;display:flex;gap:8px;align-items:center}
+  .composer{flex:1;background:#fff;border-radius:22px;display:flex;align-items:center;padding:6px 12px}
+  .composer input{border:0;outline:0;flex:1;font-size:14.5px;background:transparent}
+  .sendbtn{width:42px;height:42px;border-radius:50%;border:0;background:var(--wa-teal);color:#fff;
+    font-size:18px;cursor:pointer;flex:0 0 auto}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .btn{background:#202c33;color:#e9edef;border:1px solid #2a3942;border-radius:20px;
+    padding:8px 16px;font-size:13px;cursor:pointer}
+  .btn:hover{background:#2a3942}
+  .hint{color:#8696a0;font-size:12px;text-align:center;max-width:430px}
+  code{background:#202c33;color:#aebac1;padding:1px 6px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+  <div class="title"><b>Chief of Staff Agent</b> · WhatsApp demo for Destination Pakistan</div>
+
+  <div class="phone">
+    <div class="header">
+      <span class="back">‹</span>
+      <div class="avatar">🏔️</div>
+      <div class="who">
+        <div class="name">Chief of Staff</div>
+        <div class="sub" id="presence">Destination Pakistan · online</div>
+      </div>
+      <div class="hdr-icons"><span>📞</span><span>⋮</span></div>
+    </div>
+
+    <div class="chat" id="chat"></div>
+
+    <div class="footer">
+      <div class="composer">
+        <input id="msg" placeholder="Ask about leads, quotes, vendors, competitors…" autocomplete="off" />
+      </div>
+      <button class="sendbtn" id="send" title="Send">➤</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="replay">▶ Replay scripted demo</button>
+    <button class="btn" id="clear">Clear</button>
+  </div>
+  <div class="hint">
+    The scripted demo runs anywhere (just open this file). To ask your own questions live,
+    serve it from the backend: <code>uvicorn app.main:app</code> then open <code>/demo</code>.
+  </div>
+
+<script>
+const ACK = "On it — pulling that now 🔎";
+const TENANT_NUMBER = "whatsapp:+14155238886";   // Destination Pakistan line
+const OWNER_NUMBER  = "whatsapp:+923001112233";  // whitelisted owner
+
+// Faithful captured transcript (mirrors the real agent output).
+const SCRIPT = [
+ {owner:"How many leads do we have right now?",
+  reply:"**18** leads."},
+ {owner:"Break that down by status",
+  reply:"**18** leads by status:\n• quoted: 6\n• booked: 3\n• new: 3\n• negotiating: 2\n• ghosted: 2\n• lost: 2"},
+ {owner:"What's our pipeline this month by destination?",
+  reply:"Pipeline: **14** leads → 9 quoted → 1 deposited ($3,000, 7% conv).\n• Hunza: 5→0 dep ($0)\n• Skardu: 3→1 dep ($3,000)\n• K2: 2→0 dep ($0)\n• Swat: 2→0 dep ($0)\n• Fairy Meadows: 1→0 dep ($0)"},
+ {owner:"Any quotes that have gone cold?",
+  reply:"**9** quotes silent ≥3d:\n• Pieter Bakker — Fairy Meadows, $2,150, 43d silent\n• Anna Kowalski — Chitral, $2,100, 33d silent\n• Grace Lee — Hunza, $1,950, 12d silent\n• Sophie Dubois — Hunza, $1,900, 10d silent\n• Liam O'Brien — Skardu, $2,400, 7d silent\n• Tom Wilson — Swat, $1,550, 5d silent\nWant me to draft a follow-up?"},
+ {owner:"Who are our worst vendors right now?",
+  reply:"Worst vendors by rating:\n• Ali Hassan (Driver) (driver) — 1.0★ (1)\n• Raja Transport Co. (transport) — 2.0★ (1)\n• Concordia Porter Team (porter) — 2.0★ (1)\n• PTDC Motel Kalam (hotel) — 3.0★ (1)"},
+ {owner:"What are competitors charging for Hunza?",
+  reply:"Hunza competitors (us: $1,800):\n• Hunza Explorers: 7-Day Hunza Cultural — $1,650 ⚠️ undercuts by $150\n• Apricot Tours: 8-Day Hunza Heritage — $1,950"},
+ {owner:"Draft a season-urgency follow-up to Skardu leads who didn't book",
+  draft:true,
+  reply:"Segment: **2** leads.\n\nDraft:\nHi {{first_name}}! A quick note on {{destination}}: peak northern-Pakistan season — high-altitude trips are open now. Spots fill fast — reply to keep planning your trip. 🏔️\n— Team Destination Pakistan\n\nReply SEND E0C1FF to send to all 2, EDIT E0C1FF <changes> to revise, or ignore."},
+ {owner:"SEND E0C1FF",
+  reply:"✅ Sent to 2 leads (log-only mode)."},
+];
+
+const chat = document.getElementById('chat');
+let clock = 9*60+41; // 09:41
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+function tstamp(){const h=Math.floor(clock/60)%24,m=clock%60;clock++;return String(h).padStart(2,'0')+":"+String(m).padStart(2,'0');}
+function scroll(){chat.scrollTop = chat.scrollHeight;}
+
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function fmt(text, draft){
+  const lines = esc(text).split("\n").map(l=>{
+    l = l.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    if(l.trimStart().startsWith('•')) return '<span class="li">'+l+'</span>';
+    return l;
+  });
+  return lines.join('<br>');
+}
+function addBubble(side, html, opts={}){
+  const row=document.createElement('div'); row.className='row '+side;
+  const b=document.createElement('div');
+  b.className='bubble'+(opts.draft?' draft':'')+(opts.system?' system':'');
+  const ticks = side==='out' ? '<span class="tick">✓✓</span>' : '';
+  b.innerHTML = html + (opts.system?'':'<span class="meta">'+tstamp()+ticks+'</span>');
+  row.appendChild(b); chat.appendChild(row); scroll(); return row;
+}
+async function typing(side='in', ms=750){
+  const row=document.createElement('div'); row.className='row '+side;
+  row.innerHTML='<div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div>';
+  chat.appendChild(row); scroll(); await sleep(ms); row.remove();
+}
+
+let playing=false;
+async function agentRespond(owner, reply, opts={}){
+  // Two-message pattern: instant ack, then the real answer.
+  await typing('in', 500);
+  addBubble('in', '<span class="ackline">'+esc(ACK)+'</span>');
+  await sleep(450);
+  await typing('in', opts.draft?1100:850);
+  addBubble('in', fmt(reply, opts.draft), {draft:opts.draft});
+}
+
+async function playScript(){
+  if(playing) return; playing=true;
+  chat.innerHTML=''; clock=9*60+41;
+  addBubble('in','👋 I’m your Chief of Staff. Ask me anything about the business — leads, quotes, vendors, competitors. Drafts wait for your <strong>SEND</strong> before anything goes out.');
+  await sleep(700);
+  for(const turn of SCRIPT){
+    addBubble('out', esc(turn.owner));
+    await sleep(350);
+    await agentRespond(turn.owner, turn.reply, {draft:turn.draft});
+    await sleep(turn.draft?900:550);
+  }
+  playing=false;
+}
+
+// --- Live mode (works when served from the backend) ---
+async function liveAsk(text){
+  addBubble('out', esc(text));
+  await typing('in',400);
+  addBubble('in','<span class="ackline">'+esc(ACK)+'</span>');
+  await typing('in',700);
+  try{
+    const body = new URLSearchParams({To:TENANT_NUMBER, From:OWNER_NUMBER, Body:text});
+    const res = await fetch('./demo/simulate',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    if(!res.ok) throw new Error('http '+res.status);
+    const data = await res.json();
+    addBubble('in', fmt(data.reply||'(no reply)', /Draft:/.test(data.reply)), {draft:/Draft:/.test(data.reply)});
+  }catch(e){
+    addBubble('', 'Live Q&A needs the demo server. Run <code>uvicorn app.main:app</code> and open <code>/demo</code>. The scripted demo (▶ Replay) runs anywhere.', {system:true});
+  }
+}
+
+document.getElementById('send').onclick=()=>{
+  const i=document.getElementById('msg'); const t=i.value.trim(); if(!t)return; i.value=''; liveAsk(t);
+};
+document.getElementById('msg').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('send').click();});
+document.getElementById('replay').onclick=playScript;
+document.getElementById('clear').onclick=()=>{chat.innerHTML='';clock=9*60+41;};
+
+playScript();
+</script>
+</body>
+</html>

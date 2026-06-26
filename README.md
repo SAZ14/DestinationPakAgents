@@ -114,6 +114,18 @@ uvicorn app.main:app --reload --port 8000
 
 `GET /health` reports which adapters are live.
 
+### WhatsApp-style demo page (for showing a client)
+
+A self-contained, WhatsApp-styled chat page at **`app/static/demo.html`**:
+
+- **Offline** — open the file in any browser and hit "▶ Replay scripted demo".
+  It auto-plays a faithful conversation (the two-message ack pattern, reads,
+  competitor undercut flags, and the draft→`SEND` confirm gate). No server, no
+  credentials — perfect to email a client.
+- **Live Q&A** — `uvicorn app.main:app` then open `http://localhost:8000/demo`.
+  The input box POSTs to `/demo/simulate` (a deterministic, always-mocked agent —
+  it never touches the network, so a competitor query can't hang mid-demo).
+
 ### Curl — simulate an owner message
 
 `/simulate` runs the agent synchronously and returns the reply as JSON (same auth

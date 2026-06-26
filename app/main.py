@@ -10,9 +10,12 @@ Lifecycle on every inbound:
 
 from __future__ import annotations
 
+import dataclasses
 import logging
+from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, Request, Response
+from fastapi.responses import HTMLResponse
 
 from .adapters.anthropic_client import make_anthropic
 from .adapters.apify_client import ApifyClient
@@ -26,6 +29,17 @@ from .tools.chief_of_staff.actions import PendingActionStore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("chief_of_staff.app")
+
+
+_DEMO_HTML = Path(__file__).parent / "static" / "demo.html"
+
+# The WhatsApp demo always runs the deterministic mock (never the network), so a
+# competitor query in front of a client can't hang on a live Apify call.
+_DEMO_SETTINGS = dataclasses.replace(
+    SETTINGS, anthropic_api_key=None, apify_token=None,
+    twilio_account_sid=None, twilio_auth_token=None,
+)
+_DEMO_OWNER = "whatsapp:+923001112233"
 
 
 def _ack_twiml() -> str:
@@ -50,6 +64,8 @@ def create_app(*, agent: Agent | None = None, twilio: TwilioClient | None = None
     app = FastAPI(title="Chief of Staff Agent", version="0.1.0")
     app.state.agent = agent or build_agent(settings)
     app.state.twilio = twilio or TwilioClient(settings)
+    # Separate, always-mocked agent for the visual WhatsApp demo.
+    app.state.demo_agent = build_agent(_DEMO_SETTINGS)
 
     def _process(*, tenant_id: str, sender: str, to: str, body: str) -> None:
         try:
@@ -84,6 +100,26 @@ def create_app(*, agent: Agent | None = None, twilio: TwilioClient | None = None
             _process, tenant_id=auth.tenant.tenant_id, sender=sender, to=to, body=body
         )
         return Response(content=_ack_twiml(), media_type="application/xml")
+
+    @app.get("/demo", response_class=HTMLResponse)
+    def demo_page():
+        """Serve the WhatsApp-styled demo page (same-origin to /demo/simulate)."""
+        return HTMLResponse(_DEMO_HTML.read_text(encoding="utf-8"))
+
+    @app.post("/demo/simulate")
+    async def demo_simulate(request: Request):
+        """Back the demo page's live Q&A with the deterministic mock agent.
+        No auth gate (sandbox demo); fixed tenant so pending drafts persist
+        across the draft→SEND exchange."""
+        form = await request.form()
+        body = (form.get("Body") or "").strip()
+        sender = form.get("From") or _DEMO_OWNER
+        if not body:
+            return {"reply": ""}
+        reply = app.state.demo_agent.handle(
+            message=body, tenant_id="destination-pakistan", sender=sender
+        )
+        return {"reply": reply}
 
     @app.post("/simulate")
     async def simulate(request: Request):
