@@ -25,12 +25,19 @@ import {
   updateLeadInboundActivity,
   updateLeadOutboundActivity,
   updateLeadQualification,
+  getLeadById,
 } from '../services/supabase/leads';
 import {
   logConversation,
   getRecentConversationsForLead,
 } from '../services/supabase/conversations';
 import { qualifyLead, FALLBACK_REPLY } from '../agents/qualifier';
+import { isStaffNumber } from '../services/staff';
+import { handleStaffMessage, notifyStaffNewQuote } from '../agents/staffCommands';
+import { draftQuote } from '../agents/quote';
+import { listActivePackages } from '../services/supabase/packages';
+import { createQuote, getPendingQuoteForLead } from '../services/supabase/quotes';
+import type { LeadRow } from '../services/supabase/types';
 
 interface InboundPayload {
   from: string; // normalized (no whatsapp: prefix)
@@ -63,6 +70,17 @@ function parseInbound(body: Record<string, unknown>): InboundPayload {
  * // For Step 3, all inbound messages are treated as customer lead messages.
  */
 async function handleInbound(payload: InboundPayload): Promise<void> {
+  // 0. Staff path: messages from an authorized approver number are commands
+  //    (approve/reject a quote), not customer leads. Handle and reply, no lead.
+  if (isStaffNumber(payload.from)) {
+    const reply = await handleStaffMessage({
+      staffNumber: payload.from,
+      message: payload.body,
+    });
+    await sendWhatsAppMessage(payload.from, reply);
+    return;
+  }
+
   // 1. Find or create the lead by phone number.
   let lead = await findLeadByWhatsAppNumber(payload.from);
   if (!lead) {
@@ -122,6 +140,58 @@ async function handleInbound(payload: InboundPayload): Promise<void> {
     twilioSid: outboundSid,
   });
   await updateLeadOutboundActivity(lead.id);
+
+  // 8. If the lead just became fully qualified, draft a quote + itinerary and
+  //    route it to staff for approval. The customer has already received the
+  //    qualifier's "we have enough to prepare a draft" reply above — nothing
+  //    price-related reaches them until a human approves.
+  if (result.status === 'qualified') {
+    await maybeDraftQuoteForStaff(lead.id);
+  }
+}
+
+/**
+ * Draft a quote for a qualified lead and notify staff — exactly once per lead.
+ *
+ * Guard: if a quote is already awaiting approval for this lead, do nothing (the
+ * customer may keep chatting while staff review). Best-effort and self-contained
+ * so a failure here never breaks the customer reply that already went out.
+ */
+async function maybeDraftQuoteForStaff(leadId: string): Promise<void> {
+  try {
+    const existing = await getPendingQuoteForLead(leadId);
+    if (existing) return; // already drafted and awaiting approval
+
+    const lead = (await getLeadById(leadId)) as LeadRow | null;
+    if (!lead) return;
+
+    const packages = await listActivePackages();
+    const draft = await draftQuote({ lead, packages });
+
+    const quote = await createQuote({
+      leadId: lead.id,
+      packageId: draft.packageId,
+      itineraryMd: draft.itineraryMd,
+      quoteMessage: draft.quoteMessage,
+      priceUsd: draft.priceUsd,
+      needsHumanPricing: draft.needsHumanPricing,
+    });
+
+    // Mark the lead as awaiting staff approval (distinct from 'qualified').
+    await updateLeadQualification(lead.id, { status: 'awaiting_approval' });
+
+    await notifyStaffNewQuote({
+      lead,
+      quote,
+      packageName: draft.packageName,
+      matchNote: draft.matchNote,
+    });
+  } catch (err) {
+    console.error(
+      '[twilio webhook] quote drafting failed:',
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
 
 export function twilioWebhookRouter(): Router {

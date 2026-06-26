@@ -97,6 +97,7 @@ export interface QuoteRow {
   lead_id: string;
   package_id: string | null;
   itinerary_md: string | null;
+  quote_message: string | null;
   price_usd: number | null;
   status: QuoteStatus;
   approved_by: string | null;

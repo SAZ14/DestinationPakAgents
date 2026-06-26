@@ -29,13 +29,13 @@ The MVP does exactly two jobs, in priority order:
 
 ## Build order (each step is independently testable)
 
-1. **Project setup** — repo, TypeScript, env, migrations, seed. ← *you are here*
-2. **Twilio webhook + echo** — receive inbound WhatsApp, log it, send a test reply.
-3. **Qualifier agent** — conversational field collection + segment classification + lead persistence.
+1. **Project setup** — repo, TypeScript, env, migrations, seed. ✅
+2. **Twilio webhook + echo** — receive inbound WhatsApp, log it, send a test reply. ✅
+3. **Qualifier agent** — conversational field collection + segment classification + lead persistence. ✅
 4. **Quote/itinerary drafting + approval routing** — package matching, Claude-drafted quote,
-   staff notification, approval flow, customer send.
+   staff notification, approval flow, customer send. ✅ ← *you are here*
 5. **Lead scoring + recovery follow-ups** — cron, scoring, drafted follow-ups, staff approval, send.
-6. **Staff command parser** — the WhatsApp admin commands.
+6. **Staff command parser** — the broader WhatsApp admin commands (approve/reject landed in Step 4).
 
 ## Repository layout
 
@@ -238,6 +238,65 @@ Send these from your WhatsApp (each new number is a fresh lead):
   noted in `special_requests` — dates are never fabricated.
 - If Claude is unreachable or returns unparseable output, the bot sends a safe
   fallback question and the webhook still succeeds (the inbound message is logged).
+
+## Step 4: Quote + Itinerary Drafting + Staff Approval
+
+Closes the concierge loop. The moment the qualifier marks a lead **`qualified`**,
+the bot automatically:
+
+1. **Matches** the best seeded package (segment → destination overlap → duration;
+   pure logic, never an invented product or price).
+2. **Drafts** — Claude writes a tailored day-by-day **itinerary** (markdown) and a
+   short, warm WhatsApp **quote message**. The price is always the catalog price.
+3. **Persists** a row in `quotes` as `awaiting_approval` and flips the lead to
+   `awaiting_approval`.
+4. **Notifies staff** — every number in `STAFF_APPROVER_NUMBERS` gets a WhatsApp
+   summary: lead, trip, price (or ⚠️ *needs human pricing*), and a match note.
+
+**Nothing reaches the customer until a human approves.** Staff approve by texting
+the bot from an approver number:
+
+| Staff message      | Effect |
+| ------------------ | ------ |
+| `APPROVE`          | Approve & send the *single* pending quote |
+| `APPROVE <name>`   | Approve the pending quote for the named lead |
+| `REJECT [name]`    | Reject the quote; lead stays `qualified` |
+| `HELP`             | List commands |
+
+On approval the customer receives the staff-reviewed quote message **and** the
+itinerary; the quote → `sent`, the lead → `sent`.
+
+> **Pricing guard.** If the lead's budget is below the matched package, the quote
+> is flagged `needs_human_pricing`, **no price is shown to the customer**, and
+> `APPROVE` is blocked until a human sets the real price.
+
+### Prerequisites
+
+- Steps 1–3 working.
+- **Apply migration `0003`** (adds `quotes.quote_message`):
+  paste `supabase/migrations/0003_quote_message.sql` into the Supabase SQL editor,
+  or `supabase db push`, or `psql "$DATABASE_URL" -f ...0003...sql`.
+- Set **`STAFF_APPROVER_NUMBERS`** in `.env` (E.164, with `whatsapp:` prefix) and
+  join the Twilio Sandbox from each of those phones so the bot can message them.
+
+### Test
+
+1. From a **customer** phone, qualify a lead fully, e.g.
+   *"We are 4 people from Malaysia, Hunza and Skardu for 10 days in July, budget
+   about $1800 per person."*
+2. The customer gets the qualifier's "we have enough to prepare a draft" reply.
+   In Supabase, a `quotes` row appears (`status=awaiting_approval`) and the lead
+   is `awaiting_approval`.
+3. The **staff** phone receives the new-quote notification. Reply `APPROVE`.
+4. The **customer** phone receives the quote message + itinerary; the `quotes`
+   row is `sent` and the lead is `sent`.
+
+### Notes
+
+- Staff vs. customer is decided purely by `STAFF_APPROVER_NUMBERS` — staff
+  messages never create leads or hit the qualifier.
+- Quote drafting is **best-effort and idempotent**: it runs once per lead (guarded
+  by an existing pending quote) and a failure never blocks the customer reply.
 
 ## Conventions
 

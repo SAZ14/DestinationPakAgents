@@ -98,6 +98,24 @@ export async function updateLeadInboundActivity(
   if (error) throw new Error(`updateLeadInboundActivity failed: ${error.message}`);
 }
 
+/**
+ * Find leads whose name matches `query` (case-insensitive substring), most
+ * recently updated first. Used by staff commands like "approve quote for Ahmed".
+ * Returns up to `limit` rows so callers can detect ambiguity.
+ */
+export async function findLeadsByNameLike(query: string, limit = 5): Promise<LeadRow[]> {
+  const q = query.trim();
+  if (q === '') return [];
+  const { data, error } = await getSupabase()
+    .from('leads')
+    .select('*')
+    .ilike('name', `%${q}%`)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`findLeadsByNameLike failed: ${error.message}`);
+  return (data as LeadRow[] | null) ?? [];
+}
+
 /** Fetch a single lead by id. Returns null if not found. */
 export async function getLeadById(leadId: string): Promise<LeadRow | null> {
   const { data, error } = await getSupabase()
