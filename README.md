@@ -60,6 +60,23 @@ flagged **needs human pricing** and Approve is blocked until a human sets the pr
 > it's the same brain that runs in the real WhatsApp pipeline, just with the
 > database/Twilio swapped for an in-memory store and a web UI.
 
+### Zero-install standalone file (for sharing / presenting)
+
+`src/demo/standalone/Destination-Pakistan-Concierge-Demo.html` is a single,
+self-contained HTML file — **no server, no `npm`, works offline.** Just open it
+in any browser. It has two modes:
+
+- **▶ Watch demo** — auto-plays a recorded walkthrough of a real run (safety
+  question → Hunza/Skardu → photographer discount → visa → full qualification →
+  drafted quote → approved & sent). Perfect for presenting with zero setup.
+- **🔴 Go live & type** — paste an Anthropic API key and chat with the **real**
+  concierge yourself, right in the browser (it calls the Anthropic API directly
+  using the same prompts + knowledge base as the server). The key stays in your
+  browser and is sent only to Anthropic.
+
+It's a build artifact generated from the live agents; the browser-side engine
+template is `src/demo/standalone/engine.template.js`.
+
 ## Build order (each step is independently testable)
 
 1. **Project setup** — repo, TypeScript, env, migrations, seed. ✅

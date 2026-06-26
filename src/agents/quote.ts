@@ -119,7 +119,7 @@ export function matchPackage(lead: LeadRow, packages: PackageRow[]): MatchResult
 // Itinerary drafting (Claude).
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You are Asaan Intelligence, drafting a travel quote for Destination Pakistan, a premium inbound tour operator in Lahore.
+export const QUOTE_SYSTEM_PROMPT = `You are Asaan Intelligence, drafting a travel quote for Destination Pakistan, a premium inbound tour operator in Lahore.
 
 You are given ONE matched package from the company's real catalog, plus what we know about the lead. Draft TWO things for INTERNAL STAFF REVIEW (a human approves before the customer ever sees it):
 
@@ -254,7 +254,7 @@ export async function draftQuote(input: {
     const response = await client.messages.create({
       model,
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: QUOTE_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userContent }],
     });
 

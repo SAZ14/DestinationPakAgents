@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Asaan Intelligence — Destination Pakistan Concierge (Demo)</title>
+<style>
+  :root {
+    --green: #075e54; --green-light: #25d366; --bubble-out: #d9fdd3;
+    --bubble-in: #ffffff; --bg: #ece5dd; --ops-bg: #0f172a; --ops-card: #1e293b;
+    --ops-line: #334155; --accent: #38bdf8; --warn: #fbbf24; --ok: #34d399; --bad: #f87171;
+    --text: #0f172a; --muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f1f5f9; color: var(--text); }
+  header { background: var(--green); color: #fff; padding: 14px 22px; display: flex;
+    align-items: center; justify-content: space-between; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header .sub { font-size: 12px; opacity: .8; }
+  header button { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  header button:hover { background: rgba(255,255,255,.25); }
+
+  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 52px); }
+  @media (max-width: 860px) { .stage { grid-template-columns: 1fr; height: auto; } }
+
+  /* ---- Customer (WhatsApp) ---- */
+  .phone { display: flex; flex-direction: column; background: var(--bg);
+    background-image: linear-gradient(rgba(229,221,213,.6), rgba(229,221,213,.6));
+    border-right: 1px solid #cbd5e1; min-height: 0; }
+  .phone .bar { background: var(--green); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .phone .bar .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--green-light);
+    display: grid; place-items: center; font-weight: 700; }
+  .phone .bar .who { font-size: 14px; font-weight: 600; }
+  .phone .bar .who small { display: block; font-weight: 400; opacity: .8; font-size: 11px; }
+  .chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 78%; padding: 8px 11px; border-radius: 10px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.08); white-space: pre-wrap; word-wrap: break-word; }
+  .msg.in { background: var(--bubble-in); align-self: flex-start; border-top-left-radius: 2px; }
+  .msg.out { background: var(--bubble-out); align-self: flex-end; border-top-right-radius: 2px; }
+  .msg.itin { font-family: ui-monospace, monospace; font-size: 12.5px; max-width: 92%; }
+  .composer { display: flex; gap: 8px; padding: 10px; background: #f0f2f5; }
+  .composer input { flex: 1; border: none; border-radius: 20px; padding: 11px 16px; font-size: 14px; outline: none; }
+  .composer button { background: var(--green); color: #fff; border: none; width: 44px; height: 44px;
+    border-radius: 50%; cursor: pointer; font-size: 18px; }
+  .composer button:disabled { opacity: .5; cursor: default; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; background: #f0f2f5; }
+  .chips button { background: #fff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 6px 11px;
+    font-size: 12px; cursor: pointer; color: #334155; }
+  .chips button:hover { background: #e2e8f0; }
+  .typing { font-size: 12px; color: var(--muted); align-self: flex-start; padding: 4px 8px; }
+
+  /* ---- Ops Console ---- */
+  .ops { background: var(--ops-bg); color: #e2e8f0; overflow-y: auto; padding: 18px; min-height: 0; }
+  .ops h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent);
+    margin: 0 0 12px; }
+  .card { background: var(--ops-card); border: 1px solid var(--ops-line); border-radius: 12px;
+    padding: 16px; margin-bottom: 16px; }
+  .lead-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge.new { background: #475569; color: #fff; }
+  .badge.qualifying { background: #1e40af; color: #dbeafe; }
+  .badge.qualified { background: #065f46; color: #d1fae5; }
+  .badge.awaiting_approval { background: #92400e; color: #fef3c7; }
+  .badge.sent { background: #047857; color: #d1fae5; }
+  .grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; }
+  .grid .k { color: var(--muted); }
+  .grid .v { color: #f1f5f9; font-weight: 500; }
+  .grid .v.empty { color: #475569; font-weight: 400; }
+  .seg-pill { display: inline-block; background: #0e7490; color: #cffafe; font-size: 11px;
+    padding: 2px 9px; border-radius: 12px; text-transform: uppercase; letter-spacing: .04em; }
+
+  .quote-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .quote-head .title { font-size: 15px; font-weight: 700; color: #fff; }
+  .price { font-size: 22px; font-weight: 800; color: var(--ok); }
+  .price small { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .warn-flag { background: #78350f; color: var(--warn); font-size: 12px; padding: 8px 12px;
+    border-radius: 8px; margin: 10px 0; border: 1px solid #b45309; }
+  .note { font-size: 12px; color: var(--muted); margin: 8px 0; font-style: italic; }
+  .qmsg { background: #0b1220; border: 1px dashed var(--ops-line); border-radius: 8px; padding: 11px;
+    font-size: 13px; line-height: 1.45; margin: 10px 0; color: #cbd5e1; }
+  .itinerary { background: #0b1220; border: 1px solid var(--ops-line); border-radius: 8px; padding: 12px;
+    max-height: 260px; overflow-y: auto; font-size: 12.5px; line-height: 1.5; color: #cbd5e1; }
+  .itinerary h1,.itinerary h2,.itinerary h3 { color: var(--accent); font-size: 13px; margin: 10px 0 4px; }
+  .itinerary strong { color: #fff; }
+  .itinerary ul { margin: 4px 0; padding-left: 18px; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  .actions button { flex: 1; border: none; padding: 12px; border-radius: 9px; font-size: 14px;
+    font-weight: 700; cursor: pointer; }
+  .approve { background: var(--ok); color: #064e3b; }
+  .reject { background: transparent; color: var(--bad); border: 1px solid var(--bad) !important; }
+  .actions button:disabled { opacity: .5; cursor: default; }
+  .sent-banner { background: #064e3b; color: var(--ok); padding: 12px; border-radius: 9px;
+    text-align: center; font-weight: 700; margin-top: 12px; }
+  .empty-ops { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .pulse { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Asaan Intelligence</h1>
+    <div class="sub">WhatsApp Travel Concierge — Destination Pakistan · <span id="modeNote">demo</span></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="watch()">▶ Watch demo</button>
+    <button onclick="goLive()">🔴 Go live &amp; type</button>
+  </div>
+</header>
+
+<div class="stage">
+  <!-- Customer side -->
+  <section class="phone">
+    <div class="bar">
+      <div class="avatar">DP</div>
+      <div class="who">Destination Pakistan<small id="presence">online</small></div>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="chips" id="chips"></div>
+    <div class="composer">
+      <input id="input" placeholder="Type a message…" autocomplete="off"
+        onkeydown="if(event.key==='Enter')send()" />
+      <button id="sendBtn" onclick="send()">➤</button>
+    </div>
+  </section>
+
+  <!-- Ops side -->
+  <section class="ops">
+    <h2>⚙ Staff Ops Console</h2>
+    <div class="card">
+      <div class="lead-head">
+        <strong>Lead Record</strong>
+        <span class="badge new" id="statusBadge">new</span>
+      </div>
+      <div class="grid" id="leadGrid"></div>
+    </div>
+    <div id="quoteArea"></div>
+  </section>
+</div>
+
+<script>
+const _urlSession = new URLSearchParams(location.search).get('s');
+const sessionId = _urlSession || ('demo_' + Math.random().toString(36).slice(2));
+const SAMPLES = [
+  "Is Pakistan safe for tourists?",
+  "Tell me about Hunza",
+  "Do you offer photography trips? Any deals?",
+  "I'm Sarah from the UK, 2 of us, Hunza + Skardu, 13 days in July, ~$2500pp, premium hotels",
+];
+const FIELDS = [
+  ['name','Name'],['nationality','Nationality'],['segment','Segment'],['num_people','Travellers'],
+  ['start_date','Start'],['end_date','End'],['budget_usd','Budget/pp'],['luxury_level','Level'],
+  ['destinations','Destinations'],['dietary','Dietary'],['visa_help','Visa help'],['special_requests','Notes'],
+];
+let busy = false;
+
+function renderChips() {
+  document.getElementById('chips').innerHTML = SAMPLES
+    .map(s => `<button onclick="quick(this)">${s}</button>`).join('');
+}
+function quick(btn) { document.getElementById('input').value = btn.textContent; send(); }
+
+function bubble(role, text, itin) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'customer' ? 'out' : 'in') + (itin ? ' itin' : '');
+  div.textContent = text;
+  document.getElementById('chat').appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function md(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.*)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^\s*[-*] (.*)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>')
+    .replace(/\n/g,'<br>');
+}
+
+function renderLead(lead) {
+  document.getElementById('statusBadge').textContent = (lead.status || 'new').replace('_',' ');
+  document.getElementById('statusBadge').className = 'badge ' + (lead.status || 'new');
+  document.getElementById('leadGrid').innerHTML = FIELDS.map(([k,label]) => {
+    let v = lead[k];
+    if (k === 'destinations') v = (v && v.length) ? v.join(', ') : '';
+    if (k === 'visa_help') v = v ? 'yes' : '';
+    if (k === 'budget_usd' && v) v = '$' + v;
+    if (k === 'segment' && v) return `<div class="k">${label}</div><div class="v"><span class="seg-pill">${v}</span></div>`;
+    const empty = (v === null || v === undefined || v === '');
+    return `<div class="k">${label}</div><div class="v ${empty?'empty':''}">${empty?'—':v}</div>`;
+  }).join('');
+}
+
+function renderQuote(q) {
+  const area = document.getElementById('quoteArea');
+  if (!q) { area.innerHTML = '<div class="card"><div class="empty-ops">No quote yet. Once the lead is qualified (dates, group size, destinations, budget, segment), the concierge auto-drafts a quote here for staff approval.</div></div>'; return; }
+  const priceBlock = q.needsHumanPricing
+    ? `<div class="warn-flag">⚠️ Budget is below the matched package — flagged <strong>needs human pricing</strong>. A human sets the price before this can be sent.</div>`
+    : `<div class="price">$${q.priceUsd}<small> /person (from)</small></div>`;
+  let actions = '';
+  if (q.status === 'awaiting_approval') {
+    actions = `<div class="actions">
+      <button class="approve" onclick="approve()" ${q.needsHumanPricing?'disabled':''}>✓ Approve &amp; send</button>
+      <button class="reject" onclick="reject()">✕ Reject</button></div>`;
+  } else if (q.status === 'sent') {
+    actions = `<div class="sent-banner">✓ Approved &amp; sent to customer</div>`;
+  } else if (q.status === 'rejected') {
+    actions = `<div class="note">Quote rejected — lead kept as qualified.</div>`;
+  }
+  area.innerHTML = `<div class="card">
+    <div class="quote-head"><span class="title">${q.packageName || 'Custom trip'}</span></div>
+    ${priceBlock}
+    <div class="note">Match: ${q.matchNote || ''}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">Customer-facing message:</div>
+    <div class="qmsg">${md(q.quoteMessage)}</div>
+    <div style="font-size:12px;color:var(--muted)">Drafted itinerary:</div>
+    <div class="itinerary">${md(q.itineraryMd)}</div>
+    ${actions}
+  </div>`;
+}
+
+function renderAll(state) { renderLead(state.lead); renderQuote(state.quote); }
+
+async function api(path, payload) {
+  const r = await fetch(path, { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ sessionId, ...payload }) });
+  return r.json();
+}
+
+function setBusy(b) {
+  busy = b;
+  document.getElementById('sendBtn').disabled = b;
+  document.getElementById('presence').textContent = b ? 'typing…' : 'online';
+  document.getElementById('presence').className = b ? 'pulse' : '';
+}
+
+async function send() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text || busy) return;
+  input.value = '';
+  bubble('customer', text);
+  setBusy(true);
+  const res = await api('/api/demo/message', { body: text });
+  setBusy(false);
+  if (!res.ok) { bubble('agent', '⚠ ' + (res.error || 'error')); return; }
+  // The latest agent reply is the last non-customer message.
+  const lastAgent = [...res.messages].reverse().find(m => m.role === 'agent');
+  if (lastAgent) bubble('agent', lastAgent.body);
+  renderAll(res);
+}
+
+async function approve() {
+  const res = await api('/api/demo/approve', {});
+  if (!res.ok) { alert(res.error); return; }
+  // Surface the two delivered messages (quote + itinerary) in the chat.
+  const sent = res.quote;
+  bubble('agent', sent.quoteMessage);
+  bubble('agent', sent.itineraryMd, true);
+  renderAll(res);
+}
+async function reject() { renderAll(await api('/api/demo/reject', {})); }
+
+async function resetDemo() {
+  const res = await api('/api/demo/reset', {});
+  document.getElementById('chat').innerHTML = '';
+  renderAll(res);
+  bubble('agent', "Assalam-o-Alaikum! 👋 Welcome to Destination Pakistan. I'm your travel concierge — ask me anything about Pakistan, our trips, visas, or let's start planning your journey.");
+}
+
+function renderMessages(messages) {
+  document.getElementById('chat').innerHTML = '';
+  for (const m of messages) bubble(m.role, m.body, m.role === 'agent' && /^#|\n- |Day \d/.test(m.body));
+}
+
+async function loadExisting() {
+  const r = await fetch('/api/demo/state?sessionId=' + encodeURIComponent(sessionId));
+  const res = await r.json();
+  renderMessages(res.messages);
+  renderAll(res);
+}
+
+renderChips();
+/* init handled by the standalone engine below */
+</script>
+<script>
+/* ===== Asaan demo engine: WATCH (scripted) + LIVE (type your own) ===== */
+const WATCH = {"turns":[{"customer":"Is Pakistan safe for tourists?","agent":"Great question! Yes — Pakistan's northern tourist regions (Hunza, Skardu, Fairy Meadows, Chitral) are peaceful, well-travelled by internationals, and have an excellent safety track record. At Destination Pakistan we use vetted routes, experienced local guides, trusted local partners, and we monitor conditions in real time before and during your trip. Solo travellers and women travel comfortably too. 😊 Are you thinking about a particular destination or time of year? And how many people would be travelling?","lead":{"id":"lead_8ybp2ax2","created_at":"2026-06-26T19:10:44.271Z","updated_at":"2026-06-26T19:10:49.501Z","source":"whatsapp","whatsapp_number":"+10000000000","name":null,"nationality":null,"city":null,"segment":null,"num_people":null,"start_date":null,"end_date":null,"budget_usd":null,"luxury_level":null,"destinations":[],"hotel_pref":null,"transport_pref":null,"dietary":null,"visa_help":false,"special_requests":null,"status":"qualifying","lead_score":[],"last_inbound_at":null,"last_outbound_at":null,"assigned_package_id":null}},{"customer":"Tell me about Hunza and Skardu — what makes them special?","agent":"Both are absolute gems! 🏔️ Hunza Valley (~2,400m) is the kind of place that rewires your soul — ringed by giants like Rakaposhi and Lady Finger, with ancient 900-year-old Baltit Fort, the turquoise Attabad Lake, dramatic Passu Cones, and the famous Eagle's Nest sunrise. The Hunza people are renowned for warmth and longevity. Skardu (~2,200m) is the gateway to the Karakoram — high-desert landscapes, the mirror-like Shangrila & Kachura lakes, Shigar and Khaplu palaces, and the vast Deosai Plateau (the 'Land of Giants', open July–Sept). It's also the launch point for K2 and the great Baltoro treks. Best time for both is roughly May–October, with magical cherry/apricot blossoms in late March–April. 🌸 Many travellers combine them — our 13 Days Culture & Adventure Trip covers Islamabad, Hunza, Skardu & Fairy Meadows from $2,100/person. Were you thinking of a particular month, and roughly how many people would be travelling?","lead":{"id":"lead_8ybp2ax2","created_at":"2026-06-26T19:10:44.271Z","updated_at":"2026-06-26T19:10:57.393Z","source":"whatsapp","whatsapp_number":"+10000000000","name":null,"nationality":null,"city":null,"segment":"culture","num_people":null,"start_date":null,"end_date":null,"budget_usd":null,"luxury_level":null,"destinations":["Hunza","Skardu"],"hotel_pref":null,"transport_pref":null,"dietary":null,"visa_help":false,"special_requests":null,"status":"qualifying","lead_score":[],"last_inbound_at":null,"last_outbound_at":null,"assigned_package_id":null}},{"customer":"I am a travel photographer. Do you have trips for creators, and is there any discount?","agent":"Love that! 📸 Yes — we have dedicated photography routes built around the best light, landscapes, and cultural access, with guides who understand shot composition and logistics. Two great fits: The Filmmaker's Journey (13 days, Hunza/Skardu/Fairy Meadows/Chitral) from $2,000/person, and our Autumn Photography Trip (12 days, Hunza/Skardu/Chitral) from $1,650/person timed for golden fall colours. 🍁 And yes — through our PR Collaboration programme, creators can travel at a significantly discounted rate (up to half price, depending on audience size and content plan) in exchange for social posts, stories, tags and mentions. You can also earn by leading group trips! To apply, the easiest is to DM @destinationpakistan on Instagram with your portfolio, or I can pass your details to the team. What month are you eyeing, and roughly how many people would be travelling?","lead":{"id":"lead_8ybp2ax2","created_at":"2026-06-26T19:10:44.271Z","updated_at":"2026-06-26T19:11:06.441Z","source":"whatsapp","whatsapp_number":"+10000000000","name":null,"nationality":null,"city":null,"segment":"photography","num_people":null,"start_date":null,"end_date":null,"budget_usd":null,"luxury_level":null,"destinations":["Hunza","Skardu"],"hotel_pref":null,"transport_pref":null,"dietary":null,"visa_help":false,"special_requests":null,"status":"qualifying","lead_score":[],"last_inbound_at":null,"last_outbound_at":null,"assigned_package_id":null}},{"customer":"Do I need a visa? I am from the UK.","agent":"Yes — as a UK citizen you'll need a Pakistan tourist visa, but it's straightforward! You can apply for the e-Visa online at visa.nadra.gov.pk (typically processed in 24–48 hours, valid up to 3 months). Some applicants need an invitation/support letter from a registered tour operator — and we provide that plus step-by-step guidance as part of our service, at no extra charge. 🛂 Just apply for the visa before booking flights. To get your photography trip moving, what month are you thinking of, and roughly how many people would be travelling?","lead":{"id":"lead_8ybp2ax2","created_at":"2026-06-26T19:10:44.271Z","updated_at":"2026-06-26T19:11:11.349Z","source":"whatsapp","whatsapp_number":"+10000000000","name":null,"nationality":"United Kingdom","city":null,"segment":"photography","num_people":null,"start_date":null,"end_date":null,"budget_usd":null,"luxury_level":null,"destinations":["Hunza","Skardu"],"hotel_pref":null,"transport_pref":null,"dietary":null,"visa_help":true,"special_requests":null,"status":"qualifying","lead_score":[],"last_inbound_at":null,"last_outbound_at":null,"assigned_package_id":null}},{"customer":"Great. Lets plan it. I am Sarah, 2 of us, Hunza and Skardu, 13 days in July, budget around 2500 USD per person, premium hotels.","agent":"Wonderful, Sarah! 🎉 That gives our team everything they need to prepare a tailored photography itinerary for the two of you — 13 days in July across Hunza and Skardu, premium hotels, around $2,500/person. July is gorgeous up north and a perfect window for Deosai too. 🏔️ A great starting point is The Filmmaker's Journey (13 days, from $2,000/person), which we'll customise to your premium preferences and shot list. Our team will put together a personalised plan and a final quote for you to review (final pricing is always confirmed in writing). As a UK traveller, we'll also include your visa support letter and guidance. Since you're a photographer, do remember you can apply for our PR Collaboration discount via @destinationpakistan on Instagram — want me to flag that to the team as well? 📸","lead":{"id":"lead_8ybp2ax2","created_at":"2026-06-26T19:10:44.271Z","updated_at":"2026-06-26T19:11:21.804Z","source":"whatsapp","whatsapp_number":"+10000000000","name":"Sarah","nationality":"United Kingdom","city":null,"segment":"photography","num_people":2,"start_date":null,"end_date":null,"budget_usd":2500,"luxury_level":"premium","destinations":["Hunza","Skardu"],"hotel_pref":null,"transport_pref":null,"dietary":null,"visa_help":true,"special_requests":"13-day trip in July; premium hotels; travel photographer (interested in PR collaboration discount)","status":"awaiting_approval","lead_score":[],"last_inbound_at":null,"last_outbound_at":null,"assigned_package_id":null}}],"quote":{"packageId":"pkg_3","packageName":"The Filmmaker's Journey","priceUsd":2000,"itineraryMd":"# The Filmmaker's Journey\n\n**Duration:** 13 days\n\n**Destinations:** Hunza, Skardu, Fairy Meadows, Chitral\n\n13-day route built for filmmakers and content creators.\n\n_Full day-by-day itinerary to be finalised by the team._","quoteMessage":"Hi Sarah, thanks for reaching out to Destination Pakistan! Based on what you shared, we'd recommend our \"The Filmmaker's Journey\" — 13 days across Hunza, Skardu, Fairy Meadows, Chitral. Pricing starts from $2000 per person. This is a proposed plan for you to review — shall we tailor it further?","needsHumanPricing":false,"matchNote":"Matched \"The Filmmaker's Journey\" (from $2000/pp).","status":"awaiting_approval"},"sentMsgs":["Hi Sarah, thanks for reaching out to Destination Pakistan! Based on what you shared, we'd recommend our \"The Filmmaker's Journey\" — 13 days across Hunza, Skardu, Fairy Meadows, Chitral. Pricing starts from $2000 per person. This is a proposed plan for you to review — shall we tailor it further?","# The Filmmaker's Journey\n\n**Duration:** 13 days\n\n**Destinations:** Hunza, Skardu, Fairy Meadows, Chitral\n\n13-day route built for filmmakers and content creators.\n\n_Full day-by-day itinerary to be finalised by the team._"],"finalLead":{"id":"lead_8ybp2ax2","created_at":"2026-06-26T19:10:44.271Z","updated_at":"2026-06-26T19:11:21.804Z","source":"whatsapp","whatsapp_number":"+10000000000","name":"Sarah","nationality":"United Kingdom","city":null,"segment":"photography","num_people":2,"start_date":null,"end_date":null,"budget_usd":2500,"luxury_level":"premium","destinations":["Hunza","Skardu"],"hotel_pref":null,"transport_pref":null,"dietary":null,"visa_help":true,"special_requests":"13-day trip in July; premium hotels; travel photographer (interested in PR collaboration discount)","status":"sent","lead_score":[],"last_inbound_at":null,"last_outbound_at":null,"assigned_package_id":null}};
+const PACKAGES = [{"id":"pkg_1","name":"13 Days Culture & Adventure Trip","segment":"culture","duration_days":13,"base_price_usd":2100,"destinations":["Islamabad","Hunza","Skardu","Fairy Meadows"],"summary":"Flagship 13-day culture & adventure loop through northern Pakistan.","active":true,"created_at":"2026-06-26T19:19:48.265Z"},{"id":"pkg_2","name":"Fairy Meadows + Hunza Valley","segment":"culture","duration_days":10,"base_price_usd":1500,"destinations":["Fairy Meadows","Hunza"],"summary":"Classic 10-day combination of Fairy Meadows and the Hunza Valley.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_3","name":"The Filmmaker's Journey","segment":"photography","duration_days":13,"base_price_usd":2000,"destinations":["Hunza","Skardu","Fairy Meadows","Chitral"],"summary":"13-day route built for filmmakers and content creators.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_4","name":"The Soul of Pakistan (Heritage)","segment":"culture","duration_days":13,"base_price_usd":2400,"destinations":["Lahore","Islamabad","Hunza","Skardu"],"summary":"13-day heritage-focused journey across Pakistan.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_5","name":"South Pakistan – Indus Heritage Route","segment":"culture","duration_days":9,"base_price_usd":1500,"destinations":["Lahore","Islamabad"],"summary":"9-day Indus heritage route through southern Pakistan.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_6","name":"Batura Trekking Expedition","segment":"trek","duration_days":15,"base_price_usd":2000,"destinations":["Hunza","Skardu"],"summary":"15-day Batura glacier trekking expedition.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_7","name":"Northern Pakistan Ultimate Adventure","segment":"culture","duration_days":11,"base_price_usd":1650,"destinations":["Hunza","Skardu","Fairy Meadows","Naran"],"summary":"11-day ultimate adventure across northern Pakistan.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_8","name":"Autumn Photography Trip","segment":"photography","duration_days":12,"base_price_usd":1650,"destinations":["Hunza","Skardu","Chitral"],"summary":"12-day autumn photography trip timed for fall colours.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_9","name":"Horseback Expedition (experienced riders)","segment":"trek","duration_days":10,"base_price_usd":3000,"destinations":["Chitral","Hunza"],"summary":"10-day horseback expedition for experienced riders.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_10","name":"Reverts Journey (spiritual/cultural)","segment":"faith","duration_days":12,"base_price_usd":1750,"destinations":["Lahore","Islamabad","Hunza"],"summary":"12-day spiritual & cultural journey for reverts.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_11","name":"Snow Leopard Expedition","segment":"trek","duration_days":10,"base_price_usd":3500,"destinations":["Hunza","Skardu"],"summary":"10-day snow leopard tracking expedition.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_12","name":"K2 (Chogori) Base Camp Trek","segment":"trek","duration_days":21,"base_price_usd":3000,"destinations":["Skardu"],"summary":"21-day K2 base camp trek — the flagship expedition.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_13","name":"Kīmiyā – A Journey Through Pakistan's Soul","segment":"culture","duration_days":13,"base_price_usd":2500,"destinations":["Lahore","Islamabad","Hunza","Skardu"],"summary":"13-day curated journey through Pakistan's soul.","active":true,"created_at":"2026-06-26T19:19:48.266Z"},{"id":"pkg_14","name":"Nangma Valley & Thallay Broq Trek","segment":"trek","duration_days":11,"base_price_usd":1600,"destinations":["Skardu"],"summary":"11-day Nangma Valley and Thallay Broq trek.","active":true,"created_at":"2026-06-26T19:19:48.266Z"}];
+const QUALIFIER_SYSTEM = "You are Asaan Intelligence, the always-available WhatsApp concierge for Destination Pakistan, a premium inbound tour operator in Lahore, Pakistan.\n\nYou have TWO jobs at once:\n1. Be a genuinely helpful concierge: answer ANY question about Destination Pakistan and travel in Pakistan — the company, current deals, packages and starting prices, how booking works, safety, visas, weather/best seasons, and in-depth knowledge of the destinations (what to see, when to go, altitude, vibe). Use the KNOWLEDGE BASE and LIVE PACKAGE CATALOG provided below as your source of truth.\n2. While helping, naturally qualify the lead for a multi-day trip (collect the fields in the output contract).\n\nAlways answer the customer's actual question first, then — only if it fits naturally — ask 1–3 questions to move the trip forward. Never interrogate; never sound like a form.\n\nKnowledge & accuracy rules:\n- Base your answers on the KNOWLEDGE BASE and LIVE PACKAGE CATALOG below. You MAY share package names and their starting \"from\" prices from the catalog.\n- If you don't know something or it isn't in your knowledge, say you'll have the team confirm it — never guess facts, prices, or availability.\n- Be concise for WhatsApp: a few short, warm sentences. Use the customer's language/tone.\n\nHard rules (never break these):\n- Never confirm a booking or say a booking is confirmed.\n- Never promise specific availability (dates, hotels, seats).\n- Never give a FINAL or TOTAL price, and never invent a price outside the catalog. Catalog \"from\" prices are indicative starting prices only; the final quote is always confirmed by our team.\n- Never say a human has approved anything.\n- If safety is asked (\"is Pakistan safe?\"), reassure factually using the knowledge base (planned routes, experienced local guides, team confirms current conditions).\n- If visa/passport help may be relevant, offer guidance.\n- If the traveller seems foreign and nationality is unknown, try to detect it early.\n\nSegment classification — choose exactly ONE primary segment:\n- culture: general culture, adventure, heritage, family; Hunza, Skardu, Lahore, Islamabad, Fairy Meadows, Swat, Kashmir, Naran, Chitral.\n- trek: K2, Batura, Snow Leopard, expedition, climbing, serious hiking, base camp, high altitude.\n- photography: photographers, filmmakers, content creators, documentary, drone/content trips.\n- faith: reverts, spiritual journey, Islamic heritage, faith-based travel.\n- corporate: company group, bank, corporate retreat, organization, delegation, MICE/group booking.\n\nRequired-to-quote minimum:\ndates or month, number of people, destination/trip type, rough budget, and a segment.\n\nWhen the required-to-quote minimum is met, set requiredFieldsComplete=true and status=\"qualified\". In the reply, tell the traveller the team now has enough to prepare a tailored itinerary and a final quote for them to review. You MAY mention the relevant catalog \"from\" starting price, but DO NOT give a final/total price and DO NOT lay out a full day-by-day itinerary (the team prepares that for human review).\n\nIf the customer gives a month but no exact dates, leave start_date and end_date null and mention the month in the reply (you may note it in special_requests). Never fabricate exact dates.\n\n=== KNOWLEDGE BASE ===\n\nABOUT DESTINATION PAKISTAN\n- Website: destinationpakistan.travel | Instagram: @destinationpakistan (170K+ followers)\n- A premium inbound tour operator based in Gulberg, Lahore, Pakistan, with around a decade of experience.\n- Founded and led by Bilal Yousuf Khan (CEO/Founder), who is personally passionate about showcasing Pakistan's beauty to the world.\n- Focus: curated, private multi-day journeys for INTERNATIONAL tourists — foreign travellers are the core customer, not Pakistani domestic tourists.\n- Prices are in US Dollars (USD), quoted per person, \"from\" prices.\n- Philosophy: personally crafted itineraries, attention to every detail, seamless experience from landing to departure. Not a generic group-tour company.\n- Committed to responsible and sustainable tourism, working with local communities.\n- 24/7 support team throughout your trip.\n- Contact: message on WhatsApp (this bot), DM on Instagram @destinationpakistan, or email (available on their website).\n\nSERVICES DESTINATION PAKISTAN OFFERS\n\n1. CUSTOM PRIVATE TOURS\n   - Fully personalised multi-day itineraries tailored to your dates, interests, group size, budget, and pace.\n   - Everything managed: private transport, experienced local guides, hand-picked accommodations, sightseeing.\n   - No two trips are identical — every itinerary is built for the specific client.\n\n2. FIXED / GROUP TRIP DEPARTURES\n   - Destination Pakistan runs scheduled group departures throughout the season (e.g. Cherry Blossom season, peak summer, autumn photography season).\n   - Limited slots; book early to secure a place.\n\n3. PHOTOGRAPHY & FILMMAKER TRIPS\n   - Dedicated routes and timing built around the best light, landscapes, and cultural access for photographers, filmmakers, content creators, and drone pilots.\n   - Photographer-specific guides who understand shot composition and logistics.\n\n4. TREKKING & EXPEDITION MANAGEMENT\n   - Full expedition logistics: K2 Base Camp, Nanga Parbat Base Camp, Batura Glacier, Snow Leopard trails, Nangma Valley, Horseback Expedition.\n   - Experienced trekking crews, porters, gear logistics, permits, emergency protocols.\n\n5. FAITH & SPIRITUAL JOURNEYS (REVERTS JOURNEY)\n   - Curated experiences for Muslim reverts and faith travellers — Islamic heritage, spiritual significance, cultural depth.\n   - A unique offering specifically designed to connect faith with travel.\n\n6. CORPORATE & GROUP BOOKINGS\n   - Team-building retreats, corporate getaways, organisational delegations, MICE travel.\n   - Custom corporate itineraries with professional facilitation.\n\n7. VISA ASSISTANCE\n   - Destination Pakistan guides clients through Pakistan's tourist visa process.\n   - Provides the invitation/support letters and booking documents that some nationalities need for their e-visa application.\n   - Does NOT process visas directly (the official Pakistan e-visa system is at visa.nadra.gov.pk), but handles the documentation, support, and guidance throughout.\n   - Especially important for nationalities that need a sponsor letter from a registered tour operator.\n\n8. AIRPORT TRANSFERS & ARRIVAL LOGISTICS\n   - Airport pickup from Islamabad (IATA: ISB) — the primary arrival point for northern Pakistan trips.\n   - Welcome dinner and trip orientation on Day 1.\n   - Drop-off and departure assistance.\n\n9. HOTEL & ACCOMMODATION BOOKING\n   - Hand-picked premium accommodations matched to the route and luxury level.\n   - Options from standard guesthouses to premium mountain lodges — tailored to budget.\n\n10. PR COLLABORATION / CONTENT CREATOR PROGRAMME\n    - Content creators, travel bloggers, photographers, and filmmakers can travel Pakistan at a DISCOUNTED RATE in exchange for social media content.\n    - In exchange: social media tags, mentions, stories, and content that tells the story of Pakistan.\n    - You can also EARN by leading group trips to Pakistan through Destination Pakistan.\n    - To apply: message @destinationpakistan on Instagram or WhatsApp.\n\n11. HONEYMOON PACKAGES\n    - Romantic curated itineraries through the northern valleys — Hunza, Skardu, Fairy Meadows.\n    - Private arrangements, premium accommodation, personalised touches.\n\n12. TRAVEL GUIDE & BLOG\n    - Destination Pakistan publishes in-depth travel guides (Pakistan 2025 guide, destination-specific guides for Pir Ghaib, Chitral, bioluminescent beaches, and more) on their website.\n\nHOW BOOKING WORKS (step by step)\n\nStep 1 — ENQUIRY\n   Tell us your trip idea on WhatsApp (this bot), Instagram DM, or email. Share dates, group size, interests, budget, and destinations in mind.\n\nStep 2 — CUSTOM QUOTE\n   Our team prepares a personalised itinerary and quote tailored to you. A real human at Destination Pakistan reviews EVERY quote before it is sent — nothing is auto-generated.\n\nStep 3 — CONFIRM & DEPOSIT\n   Your booking is confirmed when you pay a 30% non-refundable deposit OR pay in full. The deposit covers reservations with hotels, transport partners, and third parties.\n\nStep 4 — REMAINING BALANCE\n   The remaining 70% (or 50% of the total, since 30% is already paid as deposit and the remaining 50% is collected on Day 1) is collected on Day 1 of your trip.\n\n   In practice: 30% deposit to confirm → 50% balance on arrival → 20% already within the deposit structure. Confirm exact payment schedule when you get your quote.\n\nStep 5 — TRIP\n   Your Destination Pakistan experience begins. 24/7 support throughout.\n\nIMPORTANT: Quoted prices are starting \"from\" prices per person. The final confirmed price depends on group size, season, hotel level, duration, and specific inclusions — always confirmed in writing by our team before you pay.\n\nPAYMENT, REFUND & CANCELLATION POLICY\n\nPAYMENT\n- Currencies: USD (standard for all packages). Local PKR accepted for on-ground costs in some cases.\n- Payment methods: confirmed by the team at booking (bank transfer, online payment — details shared with your confirmed quote).\n- A booking is confirmed when either (a) full payment is received OR (b) a 30% deposit is paid.\n\nDEPOSIT\n- The 30% advance deposit is NON-REFUNDABLE.\n- It covers the cost of cancelling reservations with hotels, transport partners, and third parties.\n\nCANCELLATIONS\n- If you cancel for any reason (personal, weather, flight cancellations, natural disasters), Destination Pakistan refunds advance or partial payments MINUS:\n  (a) The non-refundable 30% deposit.\n  (b) A service charge of UP TO 20% of the total trip cost, based on time, effort, and resources already used in planning and organising your tour.\n  (c) Note: the 20% service charge does NOT apply to payments made for domestic airfare.\n\nPOSTPONEMENTS\n- If your trip is delayed or postponed (personal reasons, weather, flight disruption), payments remain secure with Destination Pakistan.\n- Contact them to request a new quotation for rescheduling — they work with you to find a new date.\n\nPRICE CHANGES\n- All prices are subject to change based on season, availability, and market rates. Confirmed bookings are honoured at the quoted price.\n\nPAKISTAN TOURIST VISA — FULL GUIDE\n\nWHO NEEDS A VISA\n- Citizens of GCC countries (Saudi Arabia, UAE, Bahrain, Oman, Qatar, Kuwait) + Nepal and Maldives: VISA FREE entry.\n- 120+ nationalities: eligible for Pakistan e-Visa (online, fast).\n- Visa on Arrival: available for select nationalities for single entry up to 30 days.\n- All other nationalities: apply through a Pakistani embassy/consulate.\n\nE-VISA (most common for foreign tourists)\n- Apply online at visa.nadra.gov.pk — Pakistan's official system, open to 192 countries.\n- Typically processed in 24–48 hours (standard applications 7–10 working days).\n- Valid for up to 3 months, single entry. Can be extended up to 6 months.\n- Some applicants need an invitation/support letter from a registered tour operator — Destination Pakistan provides this.\n\nHOW DESTINATION PAKISTAN HELPS\n- Guides you through the e-visa application step by step.\n- Provides the official invitation letter and booking documentation required by some nationalities.\n- Works with registered tour operator status, so their documents are accepted by Pakistan immigration.\n- They do NOT charge separately for visa guidance — it is part of the overall service.\n\nIMPORTANT TIPS\n- Apply for your visa BEFORE booking flights — processing times vary.\n- Some nationalities (e.g. Indian passport holders, certain nationalities) have restricted access; ask and we will check for your specific passport.\n- Visa extension can be done inside Pakistan through the Foreigners Registration Office (FRO).\n\nPR COLLABORATION & CONTENT CREATOR PROGRAMME\n\nDestination Pakistan actively works with travel photographers, filmmakers, bloggers, YouTubers, and social media content creators.\n\nWHAT YOU GET\n- Travel Pakistan at a SIGNIFICANTLY DISCOUNTED RATE (up to half price, depending on your audience size and content plan).\n- A chance to be one of the first creators to document destinations most people haven't seen.\n- Full Destination Pakistan support: logistics, guides, permits, accommodations.\n\nWHAT THEY EXPECT IN RETURN\n- Social media content: posts, stories, reels, tags, mentions testifying to the trip and Pakistan's beauty.\n- Your content reaches curious Pakistanis and a global audience simultaneously.\n- No hard follower minimum stated, but they consider your content quality and audience relevance.\n\nHOW TO APPLY\n- DM @destinationpakistan on Instagram with your portfolio/profile.\n- Or message on WhatsApp (this bot can take initial details and pass them to the team).\n\nEARN BY LEADING TRIPS\n- If you have a following or community, you can EARN money by leading group trips to Pakistan through Destination Pakistan.\n- They handle all logistics; you bring your audience and lead the experience.\n- Ask for details — the team will explain the revenue structure.\n\nCURRENT DEALS & SPECIAL OFFERS\n\n(This section is updated by the Destination Pakistan team. If no specific promotion is listed, the team always works to offer the best current pricing for your dates and group.)\n\nSEASONAL HIGHLIGHTS\n- Cherry Blossom Season (late March to mid-April): Hunza and Skardu valleys transform with apricot, cherry, and apple blossoms. Limited slots — book well in advance. Starting from $2,000/person for 12 days.\n- Peak Summer (May–September): Best for most northern Pakistan trips, trekking, K2 expeditions, and Deosai. Main booking season.\n- Autumn Photography Season (September–October): Golden light, harvest colours, and stunning landscapes — favourite for photographers. Book early.\n- Winter Trips (November–February): Snow-covered northern Pakistan for the adventurous. Some high routes close; lower valleys accessible.\n\nPR COLLABORATION DISCOUNT\n- Photographers, filmmakers, and content creators can travel at a discounted rate in exchange for content. Ask for details.\n\nGROUP DISCOUNT\n- Groups of 6+ may qualify for a group rate. Ask the team when enquiring.\n\nNOTE: All promotions and deals are subject to availability and are confirmed by the team. This bot will flag to the team if you'd like the latest pricing.\n\nDESTINATION GUIDES\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nHUNZA VALLEY (Gilgit-Baltistan, ~2,400m)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nOften called the valley that rewires your soul. Surrounded by Rakaposhi (7,788m), Ultar Sar, Lady Finger/Bublimating, and Diran peaks. The Hunza people are famous for warmth, longevity, and hospitality.\n\nMUST-SEE:\n- Baltit Fort (900+ years old, UNESCO-listed, stunning view over Karimabad)\n- Altit Fort & Royal Gardens (even older than Baltit, beautifully restored)\n- Karimabad bazaar — handicrafts, dried apricots, local gemstones\n- Eagle's Nest viewpoint — the sunrise/sunset view is one of the most photographed in Pakistan\n- Attabad Lake — vivid turquoise lake formed by a 2010 landslide; boat rides available\n- Passu Cones — dramatic jagged rock towers rising straight from the earth\n- Passu Glacier & Hopper Glacier — walk on a glacier with a guide\n- Khunjerab Pass (4,693m) — China border, one of the world's highest paved crossings; view of Karakoram peaks\n- Duikar (Eagle's Nest village) — traditional stone houses and apricot orchards\n\nBEST TIME: April–October. Cherry/apricot blossom: late March–April (magical, book early). Autumn colours: October.\nVIBE: Safe, relaxed, romantic, photogenic, great for families and solo travellers.\nFOOD: Chapshuro (local meat pastry), Hunzai bread, dried mulberries, apricot juice — don't miss Café de Hunza.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSKARDU (Gilgit-Baltistan, ~2,200m)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nGateway to the Karakoram — the world's densest cluster of 8,000m peaks. A high-desert landscape of rivers, cold deserts, and crystal-clear lakes.\n\nMUST-SEE:\n- Shangrila / Lower Kachura Lake — resort by a lake, often called \"Heaven on Earth\"\n- Upper Kachura Lake — turquoise alpine lake at higher elevation, fewer crowds\n- Shigar Fort (17th century, now a boutique hotel in a spectacular river valley)\n- Khaplu Palace & Khaplu Valley — one of the best-preserved historic palaces in the north\n- Deosai National Park (\"Land of Giants\") — vast 4,000m plateau, home to the Himalayan brown bear, snow leopard, and summer wildflowers — opens July–September\n- Katpana Cold Desert — sand dunes beside the Indus River in a high-altitude cold desert\n- Satpara Lake — peaceful spot near Skardu town with trout fishing\n- Skardu Fort — historic hilltop fort with panoramic views\n\nBEST TIME: May–September. Deosai specifically July–September.\nTREK BASE: Launch point for K2 Base Camp (via Askole), Gondogoro La, Masherbrum, and all Baltoro treks.\nFLIGHT: Skardu has an airport (SKZ) — flights from Islamabad save 2 days of road. Subject to weather; DP books and manages.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFAIRY MEADOWS & NANGA PARBAT (~3,300m)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nOne of the most dramatic experiences in all of Pakistan. An open alpine meadow directly in front of Nanga Parbat (8,126m — the 9th highest mountain, \"Killer Mountain\").\n\nACCESS: Raikot Bridge on the KKH → 3-hour bone-rattling jeep ride → 3–4 hour uphill hike. No roads into the meadow itself. Porters carry your gear.\nSTAY: Rustic wooden cabins and camps right in the meadow — basic but magical.\n\nHIGHLIGHTS:\n- Watching Nanga Parbat turn gold at sunrise and pink at sunset — one of Pakistan's most stunning experiences\n- Hike to Beyal Camp for closer views\n- Trek to Nanga Parbat Base Camp (Raikot side) — full day, high altitude, spectacular\n- Pine forests, wildflowers in summer, near-perfect stargazing at night\n- Bonfire dinners with the mountain right in front of you\n\nBEST TIME: June–September. Snow can remain on the meadow into June.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCHITRAL & KALASH VALLEYS (Khyber Pakhtunkhwa)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nOne of Pakistan's most culturally unique regions. Home to the Kalash people — a small ethnic minority with their own animist religion, colourful dress, and ancient festivals that have survived for centuries against the backdrop of the Hindu Kush.\n\nHIGHLIGHTS:\n- Kalash Valleys (Bumburet, Rumbur, Birir) — meet the Kalash people, see their architecture, festivals\n- Chitral Fort and the old town bazaar\n- Tirich Mir (7,708m) — highest peak of the Hindu Kush, visible from Chitral\n- Shandur Pass (3,734m) — the world's highest polo ground; annual Shandur Polo Festival (July)\n- The drive from Chitral to Hunza via Boroghil is spectacular for adventure travellers\n\nFESTIVALS: Chilam Joshi (May, spring festival), Uchal (autumn). Book specifically for these if interested.\nBEST TIME: Spring to early autumn.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNARAN, KAGHAN & BABUSAR PASS (Khyber Pakhtunkhwa)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThe most accessible alpine escape from Islamabad — green valleys, rivers, and easy high-altitude passes.\n\nHIGHLIGHTS:\n- Lake Saif-ul-Malook — a glacial lake wrapped in Pashtun legend, one of Pakistan's most visited and beautiful lakes\n- Lulusar Lake — serene, less crowded lake further up the valley\n- Babusar Top (4,173m) — a high mountain pass with sweeping 360° views connecting Kaghan to Gilgit-Baltistan\n- Naran town as a base with adventure activities (jeep safaris, horse riding)\n\nBEST TIME: Late June–September (the high passes are snow-blocked in winter and spring).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSWAT VALLEY & KALAM (Khyber Pakhtunkhwa)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nOften called \"The Switzerland of Pakistan\" — lush green valleys, rivers, forests, and deep Buddhist-era (Gandhara) archaeological heritage.\n\nHIGHLIGHTS:\n- Kalam — picturesque village surrounded by pine forests and rivers; base for higher treks\n- Ushu Forest — dense forest of deodars and pines above Kalam\n- Mahodand Lake — a mirror-still lake ringed by peaks beyond Kalam\n- Malam Jabba — Pakistan's only ski resort, also popular in summer\n- Swat Museum and Gandhara Buddhist sites — centuries of history\n- Mingora — main city with a lively bazaar\n\nBEST TIME: Spring to autumn. Skiing in winter at Malam Jabba.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nAZAD KASHMIR (Neelum Valley, Arang Kel)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLush, forested, and less known than Gilgit-Baltistan — a beautiful alternative for green mountain scenery.\n\nHIGHLIGHTS:\n- Neelum Valley — a river valley stretching to the Line of Control, dotted with villages\n- Arang Kel — a hilltop village accessible only by cable car or hike; extraordinary views\n- Ratti Gali Lake — high-altitude jewel lake\n- Keran, Sharda — historic village and ancient university ruins\n- Banjosa Lake\n\nNOTE: Some Azad Kashmir areas require special permits — Destination Pakistan arranges these.\nBEST TIME: Late spring to autumn.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nISLAMABAD (Capital, ~500m)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThe modern, planned capital and the main international arrival hub. Most Destination Pakistan trips begin and end here (Islamabad Airport, IATA: ISB).\n\nHIGHLIGHTS:\n- Faisal Mosque — one of the largest mosques in the world, surrounded by the Margalla Hills\n- Daman-e-Koh — a hilltop viewpoint over the city from the Margalla Hills\n- Pakistan Monument — modern monument representing the four provinces\n- Shakarparian Park & Rose & Jasmine Garden\n- Taxila (30 min drive) — UNESCO-listed ancient Gandhara city with 3,000 years of history; stupas, museums\n- Blue Area — modern commercial centre; good food and shopping\n\nBEST TIME: October–April (summers are hot; winters are mild and pleasant).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLAHORE (Cultural Capital)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPakistan's soul and cultural heart — Mughal architecture, extraordinary food, and a city that never slows down. Destination Pakistan is headquartered here in Gulberg.\n\nHIGHLIGHTS:\n- Lahore Fort (Shahi Qila, UNESCO) — a magnificent Mughal fortress with palaces and museums\n- Badshahi Mosque — one of the largest mosques in the world; Mughal grandeur at its peak\n- Wazir Khan Mosque — a smaller but exquisitely detailed Mughal-era gem inside the Walled City\n- The Walled City (Androon Lahore) — a 2,000+ year old city; best explored on foot or by rickshaw\n- Shalimar Gardens (UNESCO) — Mughal gardens built by Emperor Shah Jahan\n- Wagah Border Ceremony — the daily flag-lowering ceremony with India; a unique spectacle\n- Food Street and Gawalmandi — legendary street food scene (seekh kebab, nihari, rabri, jalebi)\n- Lahore Museum — one of the finest museums in South Asia\n\nBEST TIME: October–March (summers are extremely hot; 40°C+).\nNOTE: Destination Pakistan's office is in Gulberg, Lahore — a modern, upscale neighbourhood.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSINDH & SOUTHERN PAKISTAN (emerging)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nDestination Pakistan also covers destinations beyond the north, including:\n- Mohenjo-daro (Sindh) — one of the world's oldest cities, 4,500 years old; UNESCO World Heritage\n- Bioluminescent beaches — a rare natural phenomenon on Pakistan's Makran coast (Balochistan/Sindh)\n- Toshangi/Shushangi Gorge — called \"The Grand Canyon of Sindh\", a spectacular lesser-known canyon\n- Pir Ghaib (Balochistan) — a natural waterfall in an otherwise arid landscape; an unexpected gem\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTREKKING & EXPEDITIONS (all managed by Destination Pakistan)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nK2 (Chogori) Base Camp Trek\n- The pinnacle of Karakoram trekking. 21 days. Follows the legendary Baltoro Glacier through a cathedral of 8,000m peaks (Gasherbrum I & II, Broad Peak, K2 itself) to Concordia — \"the throne room of the mountain gods.\"\n- Physically demanding: good fitness required, altitude acclimatisation built in, experienced crew.\n- Starts and ends in Skardu. Summer only (June–August).\n\nNanga Parbat Basecamp Trek\n- A shorter but equally dramatic expedition to the base of the world's 9th-highest peak.\n- Access via Fairy Meadows (jeep + hike). Day hike from Fairy Meadows to Raikot Base Camp.\n\nBatura Glacier Expedition (15 days)\n- Technical glacier trek in the upper Hunza region. For experienced trekkers.\n\nSnow Leopard Expedition (10 days)\n- Wildlife-focused trek to areas where the elusive snow leopard roams. Hunza/Skardu region.\n\nHorseback Expedition (10 days, experienced riders only)\n- Unique horse-trekking route through Chitral and Hunza for experienced riders.\n\nNangma Valley & Thallay Broq Trek (11 days)\n- A remote and spectacular Karakoram valley near Skardu. Less crowded than K2 trails.\n\nSAFETY, VISA & PRACTICALITIES\n\nIS PAKISTAN SAFE?\nYes — Pakistan's northern tourist regions (Gilgit-Baltistan, Hunza, Skardu, Fairy Meadows, Chitral) are well-travelled by international visitors and have an excellent safety track record for tourists. Destination Pakistan uses:\n- Planned, vetted routes\n- Experienced local guides who know the region and its communities\n- Trusted local partners (hotels, transport, crew)\n- Real-time monitoring — the team confirms current conditions before and during travel\nForeign tourists frequently report feeling exceptionally safe and welcomed. The warmth of Pakistani hospitality is consistently one of the most-mentioned highlights.\n\nWOMEN & SOLO TRAVELLERS\nAbsolutely welcome and common on Destination Pakistan trips. The northern mountain communities are especially welcoming to foreign travellers. Modest dress is recommended outside cities; in Islamabad and Lahore, Western dress is acceptable. Destination Pakistan guides clients on cultural norms.\n\nALTITUDE & HEALTH\n- Hunza (2,400m), Skardu (2,200m), Deosai (4,000m+), and trek routes can go above 5,000m.\n- Itineraries include acclimatisation days for high-altitude trips.\n- Trekking expeditions (K2, Batura, etc.) require good physical fitness and cardiovascular health.\n- Travel insurance including emergency evacuation is STRONGLY recommended for all trips. Ask the team for guidance.\n\nCONNECTIVITY\n- Pakistani SIM cards (Jazz, Zong, Telenor) are available at airports; Jazz/Zong have the best northern coverage.\n- Coverage drops in remote valleys and trek routes — expect to be offline.\n- Most hotels in Hunza and Skardu have WiFi; quality varies.\n\nCURRENCY\n- Pakistani Rupee (PKR) for local purchases.\n- USD is the standard for Destination Pakistan packages.\n- ATMs available in Islamabad, Lahore, Gilgit, and Skardu — carry cash for remote areas.\n- Credit cards accepted in major hotels and restaurants in cities; not reliable in small towns.\n\nFOOD & DIETARY NEEDS\n- Pakistan is largely halal — halal food is the standard everywhere.\n- Vegetarian options are widely available (lentils, rice, vegetable curries, local breads).\n- Vegan and other dietary needs can be arranged with advance notice.\n- Northern Pakistani cuisine highlights: Chapshuro, Hunzai bread, dumplings, Balti cuisine, and legendary Lahori street food.\n\nBEST SEASON SUMMARY\n- May–October: Northern Pakistan, trekking, Hunza, Skardu, Fairy Meadows.\n- Late March–April: Cherry/apricot blossom in Hunza and Skardu (book early, limited slots).\n- September–October: Autumn photography — golden light, fall colours, harvests.\n- October–March: Lahore, Islamabad, historic sites, South Pakistan (cities cool down pleasantly).\n- Deosai National Park: July–September only.\n- K2 Base Camp Trek: June–August.\n\nFREQUENTLY ASKED QUESTIONS\n\nQ: Is Pakistan safe for foreign tourists?\nA: Yes. The northern mountain regions are peaceful, welcoming, and well-travelled by internationals. Destination Pakistan monitors conditions and uses planned routes and experienced guides.\n\nQ: Can I get a tourist visa for Pakistan easily?\nA: Most nationalities can get an e-visa online at visa.nadra.gov.pk. GCC nationals are visa-free. Destination Pakistan provides the invitation letters and support documents you may need. Ask us and we'll guide you step by step.\n\nQ: Can you arrange a custom trip for just me and my family/partner?\nA: Yes — almost every Destination Pakistan trip is private and fully custom. Just share your dates, group, and interests.\n\nQ: Do you cater to solo travellers?\nA: Yes. Solo travellers are welcome on both private custom trips and scheduled group departures.\n\nQ: What's the minimum budget for a trip?\nA: Destination Pakistan packages typically start from around $1,500/person for 10–13 day trips. Shorter custom trips can be less. The final price depends on group size, season, hotels, and inclusions — share your budget and the team will find the best option.\n\nQ: What's included in your packages?\nA: Typically: private transport throughout, experienced local guide(s), accommodation, and planned sightseeing. Exact inclusions (meals, domestic flights, trekking permits, gear) vary by trip and are always specified in your quote.\n\nQ: Do you offer honeymoon trips?\nA: Yes. Destination Pakistan creates private, romantic honeymoon itineraries through the northern valleys.\n\nQ: Can I travel with children?\nA: Yes. Family-friendly trips are available — the team customises pace and activities for families.\n\nQ: I'm a photographer/filmmaker — do you have special trips?\nA: Yes. Photography and filmmaker trips with dedicated routes, timing for best light, and guides who understand content creation. Also see the PR Collaboration programme for discounted rates.\n\nQ: What's the PR collaboration / can I travel for less?\nA: Photographers, filmmakers, and content creators can travel at a significantly reduced rate in exchange for social media content (posts, stories, tags). DM @destinationpakistan on Instagram or message this bot to get started.\n\nQ: Can I earn by leading trips?\nA: Yes. If you have a community or following, you can lead group trips to Pakistan through Destination Pakistan and earn from it. Ask the team for details.\n\nQ: What's the cancellation policy?\nA: The 30% deposit is non-refundable. If you cancel after that, a service charge of up to 20% applies on the remaining amount. Postponements keep your money secure and we rebook at a new date.\n\nQ: How do I pay?\nA: A 30% deposit confirms your booking. The balance is due before or on Day 1 of your trip. Payment methods are confirmed with your quote.\n\nQ: Do you cover destinations outside the north (Sindh, Balochistan)?\nA: Yes — Destination Pakistan covers destinations including bioluminescent beaches (Makran coast), Mohenjo-daro, Toshangi Gorge (Grand Canyon of Sindh), and Pir Ghaib in Balochistan, among others.\n\n=== LIVE PACKAGE CATALOG (real current packages — you MAY share these names and \"from\" starting prices;\nfinal pricing is always confirmed by a human at Destination Pakistan)\n- [CULTURE] 13 Days Culture & Adventure Trip | 13 days | From $2100/person | Destinations: Islamabad, Hunza, Skardu, Fairy Meadows — Flagship 13-day culture & adventure loop through northern Pakistan.\n- [CULTURE] Fairy Meadows + Hunza Valley | 10 days | From $1500/person | Destinations: Fairy Meadows, Hunza — Classic 10-day combination of Fairy Meadows and the Hunza Valley.\n- [PHOTOGRAPHY] The Filmmaker's Journey | 13 days | From $2000/person | Destinations: Hunza, Skardu, Fairy Meadows, Chitral — 13-day route built for filmmakers and content creators.\n- [CULTURE] The Soul of Pakistan (Heritage) | 13 days | From $2400/person | Destinations: Lahore, Islamabad, Hunza, Skardu — 13-day heritage-focused journey across Pakistan.\n- [CULTURE] South Pakistan – Indus Heritage Route | 9 days | From $1500/person | Destinations: Lahore, Islamabad — 9-day Indus heritage route through southern Pakistan.\n- [TREK] Batura Trekking Expedition | 15 days | From $2000/person | Destinations: Hunza, Skardu — 15-day Batura glacier trekking expedition.\n- [CULTURE] Northern Pakistan Ultimate Adventure | 11 days | From $1650/person | Destinations: Hunza, Skardu, Fairy Meadows, Naran — 11-day ultimate adventure across northern Pakistan.\n- [PHOTOGRAPHY] Autumn Photography Trip | 12 days | From $1650/person | Destinations: Hunza, Skardu, Chitral — 12-day autumn photography trip timed for fall colours.\n- [TREK] Horseback Expedition (experienced riders) | 10 days | From $3000/person | Destinations: Chitral, Hunza — 10-day horseback expedition for experienced riders.\n- [FAITH] Reverts Journey (spiritual/cultural) | 12 days | From $1750/person | Destinations: Lahore, Islamabad, Hunza — 12-day spiritual & cultural journey for reverts.\n- [TREK] Snow Leopard Expedition | 10 days | From $3500/person | Destinations: Hunza, Skardu — 10-day snow leopard tracking expedition.\n- [TREK] K2 (Chogori) Base Camp Trek | 21 days | From $3000/person | Destinations: Skardu — 21-day K2 base camp trek — the flagship expedition.\n- [CULTURE] Kīmiyā – A Journey Through Pakistan's Soul | 13 days | From $2500/person | Destinations: Lahore, Islamabad, Hunza, Skardu — 13-day curated journey through Pakistan's soul.\n- [TREK] Nangma Valley & Thallay Broq Trek | 11 days | From $1600/person | Destinations: Skardu — 11-day Nangma Valley and Thallay Broq trek.\n\n=== END KNOWLEDGE ===\n\nOutput contract — respond with ONLY a single JSON object, no markdown, no code fences, no text before or after:\n{\n  \"reply\": string,                       // the WhatsApp message to send back\n  \"extractedFields\": {\n    \"name\": string | null,\n    \"nationality\": string | null,\n    \"city\": string | null,\n    \"segment\": \"culture\" | \"trek\" | \"photography\" | \"faith\" | \"corporate\" | null,\n    \"num_people\": number | null,\n    \"start_date\": string | null,         // YYYY-MM-DD or null\n    \"end_date\": string | null,           // YYYY-MM-DD or null\n    \"budget_usd\": number | null,         // numeric only, no currency symbols\n    \"luxury_level\": string | null,       // e.g. \"budget\" | \"standard\" | \"premium\" | \"luxury\"\n    \"destinations\": string[] | null,\n    \"hotel_pref\": string | null,\n    \"transport_pref\": string | null,\n    \"dietary\": string | null,\n    \"visa_help\": boolean | null,\n    \"special_requests\": string | null\n  },\n  \"requiredFieldsComplete\": boolean,\n  \"status\": \"qualifying\" | \"qualified\",\n  \"confidence\": number                   // 0..1, your confidence in the extraction\n}\n\nOnly include fields you actually learned (use null otherwise). Do not overwrite previously known facts with guesses.";
+const QUOTE_SYSTEM = "You are Asaan Intelligence, drafting a travel quote for Destination Pakistan, a premium inbound tour operator in Lahore.\n\nYou are given ONE matched package from the company's real catalog, plus what we know about the lead. Draft TWO things for INTERNAL STAFF REVIEW (a human approves before the customer ever sees it):\n\n1. A day-by-day itinerary in clean markdown, tailored to the lead (their destinations, group size, segment, dates/month, dietary needs, special requests). Use the package's duration and destinations as the backbone. Keep it concrete and inviting but realistic for northern Pakistan travel.\n\n2. A short, warm WhatsApp quote message (4–8 lines) the staff member can forward as-is.\n\nABSOLUTE rules:\n- Use ONLY the price provided to you. Never invent, discount, or change a price. If a \"needsHumanPricing\" flag is set, do NOT state any price in the quote message — instead say the team is confirming the best price for their budget and will share it shortly.\n- Never confirm a booking or promise availability. Frame it as a proposed itinerary and quote for them to review.\n- Never claim a human has approved anything.\n- Quote prices are per person in USD, described as \"from\" (starting) prices.\n- Do not fabricate exact dates if only a month is known — refer to the month.\n\nOutput contract — respond with ONLY a single JSON object, no markdown fences, no text before or after:\n{\n  \"itineraryMd\": string,     // markdown, day-by-day\n  \"quoteMessage\": string     // the WhatsApp message to (later) send the customer\n}";
+const MODEL = "claude-opus-4-8";
+const WELCOME = "Assalam-o-Alaikum! 👋 Welcome to Destination Pakistan. I'm your travel concierge — ask me anything about Pakistan, our trips, visas, deals, or let's start planning your journey.";
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const $ = (id) => document.getElementById(id);
+let LIVE = false;
+let API_KEY = '';
+let liveLead = null, liveMsgs = [], liveQuote = null;
+
+// resetDemo is bound to a header button in the markup; make it safe offline.
+resetDemo = function () {
+  $('chat').innerHTML = '';
+  $('quoteArea').innerHTML = '';
+  renderLead({ status: 'new', destinations: [] });
+  renderQuote(null);
+  bubble('agent', WELCOME);
+};
+
+function setComposer(enabled) {
+  $('input').disabled = !enabled;
+  $('sendBtn').disabled = !enabled;
+  $('input').placeholder = enabled ? 'Type your message…' : '(press ▶ Watch demo, or 🔴 Go live to type)';
+}
+
+/* ---------------- WATCH MODE (scripted replay of a real run) ---------------- */
+async function watch() {
+  LIVE = false;
+  setComposer(false);
+  $('chips').style.display = 'none';
+  $('modeNote').textContent = '▶ Recorded walkthrough';
+  resetDemo();
+  await sleep(800);
+  for (const turn of WATCH.turns) {
+    bubble('customer', turn.customer);
+    setBusy(true);
+    await sleep(1400);
+    setBusy(false);
+    bubble('agent', turn.agent);
+    renderLead(turn.lead);
+    await sleep(2100);
+  }
+  const q = Object.assign({}, WATCH.quote, { status: 'awaiting_approval' });
+  renderQuote(q);
+  $('statusBadge').textContent = 'awaiting approval';
+  $('statusBadge').className = 'badge awaiting_approval';
+  await sleep(2600);
+  renderQuote(Object.assign({}, WATCH.quote, { status: 'sent' }));
+  renderLead(WATCH.finalLead);
+  await sleep(700);
+  bubble('agent', WATCH.sentMsgs[0]);
+  await sleep(900);
+  bubble('agent', WATCH.sentMsgs[1], true);
+}
+
+/* ---------------- LIVE MODE (real AI, type your own) ---------------- */
+function newLiveLead() {
+  return {
+    name: null, nationality: null, city: null, segment: null, num_people: null,
+    start_date: null, end_date: null, budget_usd: null, luxury_level: null,
+    destinations: [], hotel_pref: null, transport_pref: null, dietary: null,
+    visa_help: false, special_requests: null, status: 'new',
+  };
+}
+
+function goLive() {
+  const key = (API_KEY || prompt('Paste your Anthropic API key (sk-ant-…). It stays in this browser only and is never uploaded anywhere except Anthropic.') || '').trim();
+  if (!key) return;
+  API_KEY = key;
+  LIVE = true;
+  liveLead = newLiveLead();
+  liveMsgs = [];
+  liveQuote = null;
+  $('chat').innerHTML = '';
+  $('quoteArea').innerHTML = '';
+  renderLead(liveLead);
+  renderQuote(null);
+  $('chips').style.display = 'flex';
+  $('modeNote').textContent = '🔴 Live — type anything';
+  setComposer(true);
+  bubble('agent', WELCOME);
+  $('input').focus();
+}
+
+function knownFields(lead) {
+  const snap = {};
+  for (const k of ['name','nationality','city','segment','num_people','start_date','end_date','budget_usd','luxury_level','destinations','hotel_pref','transport_pref','dietary','visa_help','special_requests','status']) {
+    const v = lead[k];
+    if (v === null || v === undefined) continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    snap[k] = v;
+  }
+  return snap;
+}
+function transcript(msgs) {
+  if (!msgs.length) return '(no prior messages)';
+  const label = { customer: 'Customer', agent: 'Concierge', staff: 'Staff' };
+  return msgs.map((m) => (label[m.role] || m.role) + ': ' + m.body).join('\n');
+}
+function leadFacts(lead) {
+  return {
+    name: lead.name, nationality: lead.nationality, num_people: lead.num_people,
+    start_date: lead.start_date, end_date: lead.end_date, budget_usd_per_person: lead.budget_usd,
+    luxury_level: lead.luxury_level, destinations: lead.destinations, hotel_pref: lead.hotel_pref,
+    transport_pref: lead.transport_pref, dietary: lead.dietary, visa_help: lead.visa_help,
+    special_requests: lead.special_requests, segment: lead.segment,
+  };
+}
+function applyPatch(lead, patch) {
+  for (const [k, v] of Object.entries(patch)) {
+    if (k === 'status') { if (v) lead.status = v; continue; }
+    if (v === null || v === undefined) continue;
+    if (typeof v === 'string' && v.trim() === '') continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    lead[k] = v;
+  }
+}
+function normalizeFields(o) {
+  o = o || {};
+  const out = {};
+  const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+  const num = (v) => (typeof v === 'number' ? v : (v != null && !isNaN(Number(v)) && String(v).trim() ? Number(v) : undefined));
+  for (const k of ['name','nationality','city','segment','start_date','end_date','luxury_level','hotel_pref','transport_pref','dietary','special_requests']) {
+    const s = str(o[k]); if (s !== undefined) out[k] = s;
+  }
+  if (num(o.num_people) !== undefined) out.num_people = num(o.num_people);
+  if (num(o.budget_usd) !== undefined) out.budget_usd = num(o.budget_usd);
+  if (typeof o.visa_help === 'boolean') out.visa_help = o.visa_help;
+  if (Array.isArray(o.destinations)) {
+    const arr = o.destinations.filter((x) => typeof x === 'string' && x.trim()).map((s) => s.trim());
+    if (arr.length) out.destinations = arr;
+  }
+  return out;
+}
+
+// Pure JS port of matchPackage (same scoring as src/agents/quote.ts).
+function destOverlap(a, b) {
+  const setB = new Set((b || []).map((d) => d.toLowerCase().trim()));
+  return (a || []).reduce((n, d) => (setB.has(d.toLowerCase().trim()) ? n + 1 : n), 0);
+}
+function scorePackage(lead, p) {
+  let s = 0;
+  if (lead.segment && p.segment === lead.segment) s += 100;
+  s += destOverlap(lead.destinations, p.destinations) * 20;
+  if (lead.start_date && lead.end_date) {
+    const days = Math.round((new Date(lead.end_date) - new Date(lead.start_date)) / 86400000) + 1;
+    if (days > 0) s += Math.max(0, 15 - Math.abs(p.duration_days - days));
+  }
+  return s;
+}
+function matchPackage(lead) {
+  if (!PACKAGES.length) return { pkg: null, needsHumanPricing: true, note: 'No packages.' };
+  const same = lead.segment ? PACKAGES.filter((p) => p.segment === lead.segment) : [];
+  const pool = same.length ? same : PACKAGES;
+  const best = pool.map((p) => ({ p, s: scorePackage(lead, p) })).sort((a, b) => b.s - a.s)[0].p;
+  const notes = [];
+  if (!same.length && lead.segment) notes.push('No exact "' + lead.segment + '" package; matched closest.');
+  let needsHumanPricing = false;
+  if (lead.budget_usd != null && lead.budget_usd < best.base_price_usd) {
+    needsHumanPricing = true;
+    notes.push('Budget ~$' + lead.budget_usd + '/pp is below "' + best.name + '" from $' + best.base_price_usd + '/pp — needs human pricing.');
+  }
+  if (!notes.length) notes.push('Matched "' + best.name + '" (from $' + best.base_price_usd + '/pp).');
+  return { pkg: best, needsHumanPricing, note: notes.join(' ') };
+}
+
+function extractJson(text) {
+  let t = (text || '').trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence && fence[1]) t = fence[1].trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a === -1 || b === -1 || b < a) throw new Error('no JSON in model reply');
+  return JSON.parse(t.slice(a, b + 1));
+}
+
+async function callClaude(system, userContent, maxTokens) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: 'user', content: userContent }] }),
+  });
+  if (!r.ok) throw new Error('Anthropic API ' + r.status + ': ' + (await r.text()).slice(0, 160));
+  const j = await r.json();
+  return (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+}
+
+// Override the interactive handlers for LIVE mode.
+send = async function () {
+  if (!LIVE) { alert('Click "🔴 Go live" first to type your own messages.'); return; }
+  const input = $('input');
+  const text = input.value.trim();
+  if (!text || busy) return;
+  input.value = '';
+  bubble('customer', text);
+  liveMsgs.push({ role: 'customer', body: text });
+  setBusy(true);
+  try {
+    const userContent =
+      'CURRENT LEAD RECORD (already known — do not re-ask these):\n' + JSON.stringify(knownFields(liveLead), null, 2) +
+      '\n\nCONVERSATION HISTORY (oldest first):\n' + transcript(liveMsgs) +
+      '\n\nLATEST CUSTOMER MESSAGE:\n' + text + '\n\nReturn the JSON object now.';
+    const raw = await callClaude(QUALIFIER_SYSTEM, userContent, 1024);
+    const parsed = extractJson(raw);
+    const reply = (typeof parsed.reply === 'string' && parsed.reply.trim()) ? parsed.reply.trim()
+      : "Thanks — could you share your travel dates, group size, and the places you'd like to visit?";
+    const fields = normalizeFields(parsed.extractedFields);
+    const status = parsed.requiredFieldsComplete === true ? 'qualified' : 'qualifying';
+    applyPatch(liveLead, Object.assign({}, fields, { status }));
+    liveMsgs.push({ role: 'agent', body: reply });
+    bubble('agent', reply);
+    renderLead(liveLead);
+    if (status === 'qualified' && !liveQuote) await draftLiveQuote();
+  } catch (e) {
+    bubble('agent', '⚠ ' + e.message);
+  }
+  setBusy(false);
+  input.focus();
+};
+
+async function draftLiveQuote() {
+  const m = matchPackage(liveLead);
+  const priceUsd = m.pkg ? m.pkg.base_price_usd : null;
+  let itineraryMd = '', quoteMessage = '';
+  try {
+    const userContent =
+      'MATCHED PACKAGE (catalog — use this price only):\n' +
+      JSON.stringify({
+        name: m.pkg.name, segment: m.pkg.segment, duration_days: m.pkg.duration_days,
+        price_usd_per_person_from: m.pkg.base_price_usd, destinations: m.pkg.destinations, summary: m.pkg.summary,
+      }, null, 2) +
+      '\n\nneedsHumanPricing: ' + m.needsHumanPricing +
+      '\n\nLEAD (tailor the itinerary to this):\n' + JSON.stringify(leadFacts(liveLead), null, 2) +
+      '\n\nReturn the JSON object now.';
+    const raw = await callClaude(QUOTE_SYSTEM, userContent, 2048);
+    const p = extractJson(raw);
+    itineraryMd = p.itineraryMd || '';
+    quoteMessage = p.quoteMessage || '';
+  } catch (e) {
+    quoteMessage = 'Thank you! Our team is putting together your tailored plan and will share it shortly.';
+    itineraryMd = '_Itinerary drafting hit an error: ' + e.message + '_';
+  }
+  liveQuote = {
+    packageName: m.pkg ? m.pkg.name : null, priceUsd, itineraryMd, quoteMessage,
+    needsHumanPricing: m.needsHumanPricing, matchNote: m.note, status: 'awaiting_approval',
+  };
+  liveLead.status = 'awaiting_approval';
+  renderLead(liveLead);
+  renderQuote(liveQuote);
+}
+
+approve = function () {
+  if (!liveQuote || liveQuote.status !== 'awaiting_approval') return;
+  if (liveQuote.needsHumanPricing && liveQuote.priceUsd == null) { alert('Needs a human price first.'); return; }
+  liveQuote.status = 'sent';
+  liveLead.status = 'sent';
+  renderLead(liveLead);
+  renderQuote(liveQuote);
+  bubble('agent', liveQuote.quoteMessage);
+  bubble('agent', liveQuote.itineraryMd, true);
+};
+reject = function () {
+  if (!liveQuote) return;
+  liveQuote.status = 'rejected';
+  liveLead.status = 'qualified';
+  renderLead(liveLead);
+  renderQuote(liveQuote);
+};
+
+watch();
+
+</script>
+</body>
+</html>

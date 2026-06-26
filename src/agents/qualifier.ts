@@ -130,7 +130,7 @@ Only include fields you actually learned (use null otherwise). Do not overwrite 
  * the freshest instruction). The catalog is passed in per call so it always
  * reflects the current database state.
  */
-function buildSystemPrompt(packages: PackageRow[]): string {
+export function buildSystemPrompt(packages: PackageRow[]): string {
   return [
     PERSONA_AND_RULES,
     '=== KNOWLEDGE BASE ===',
