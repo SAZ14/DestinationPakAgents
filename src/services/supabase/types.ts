@@ -10,6 +10,7 @@ export type LeadSegment = 'culture' | 'trek' | 'photography' | 'faith' | 'corpor
 export type LeadStatus =
   | 'new'
   | 'qualifying'
+  | 'qualified' // added in migration 0002 — required-to-quote minimum reached
   | 'quoted'
   | 'awaiting_approval'
   | 'sent'

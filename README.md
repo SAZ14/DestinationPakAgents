@@ -177,6 +177,68 @@ to the exact tunnel URL Twilio calls — otherwise requests are rejected as 403.
 3. **Supabase `conversations`** has two rows for that `lead_id`: a `customer`
    row (your message) and an `agent` row (the reply), each with a `twilio_sid`.
 
+## Step 3: Qualifier Agent Test
+
+Replaces the fixed echo with a **Claude-powered lead qualifier**. The bot now
+conversationally collects trip details, classifies the segment, persists lead
+fields, and moves the lead `new → qualifying → qualified`. **No quotes or
+itineraries are generated** — when the minimum is met it says the team has enough
+to prepare a draft for internal review.
+
+### Prerequisites
+
+- Steps 1–2 working (migration applied, seed run, Twilio Sandbox echo proven).
+- **Apply migration `0002`** (adds the `qualified` status):
+  paste `supabase/migrations/0002_lead_status_qualified.sql` into the Supabase SQL
+  editor, or `supabase db push`, or `psql "$DATABASE_URL" -f ...0002...sql`.
+- Set Anthropic env in `.env`:
+  ```
+  ANTHROPIC_API_KEY=sk-ant-...
+  ANTHROPIC_MODEL=claude-opus-4-8      # configurable
+  ```
+
+### Run + expose (same as Step 2)
+
+```bash
+npm run dev
+ngrok http 3000     # point the Twilio Sandbox webhook at /webhooks/twilio/whatsapp
+```
+
+### Test scenarios
+
+Send these from your WhatsApp (each new number is a fresh lead):
+
+1. **Basic culture lead** — *"Hi, I want to visit Hunza in July."*
+   → Bot asks for group size and dates/budget naturally. `status=qualifying`,
+   `segment=culture`.
+2. **Trek lead** — *"We are 3 people interested in K2 Base Camp next summer."*
+   → `segment=trek`, `num_people=3`. Bot asks dates, budget, experience level,
+   and nationality if missing.
+3. **Photography lead** — *"I am a filmmaker from France looking for a 12-day trip
+   in northern Pakistan."*
+   → `segment=photography`, `nationality` detected (France/French). Bot asks
+   preferred dates, group size, destinations, and budget.
+4. **Qualified lead** — *"We are 4 people from Malaysia. We want Hunza and Skardu
+   for 10 days in July, budget around $1800 per person."*
+   → Required fields complete → `status=qualified`. Bot says the team has enough
+   to prepare a draft itinerary and quote for review. **No quote is generated.**
+
+### What to inspect in Supabase
+
+- **`leads`** for your number — watch fields fill in across turns: `segment`,
+  `num_people`, `start_date`/`end_date` (or null if only a month was given),
+  `budget_usd`, `destinations`, `nationality`, and `status`
+  (`qualifying` → `qualified`).
+- **`conversations`** — alternating `customer` / `agent` rows building the history
+  the qualifier reads each turn.
+
+### Notes
+
+- If only a **month** is given, `start_date`/`end_date` stay null and the month is
+  noted in `special_requests` — dates are never fabricated.
+- If Claude is unreachable or returns unparseable output, the bot sends a safe
+  fallback question and the webhook still succeeds (the inbound message is logged).
+
 ## Conventions
 
 - **Secrets** live only in `.env`; `.env` is git-ignored. `.env.example` documents every key.

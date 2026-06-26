@@ -24,15 +24,13 @@ import {
   createLeadFromWhatsApp,
   updateLeadInboundActivity,
   updateLeadOutboundActivity,
+  updateLeadQualification,
 } from '../services/supabase/leads';
-import { logConversation } from '../services/supabase/conversations';
-
-// DESTINATION-PAKISTAN SPECIFIC: Step 2 fixed test reply. Step 3 replaces this
-// with the Claude qualifier's response.
-const TEST_REPLY =
-  'Thanks for messaging Destination Pakistan. This is Asaan Intelligence test ' +
-  'mode — we received your message and a travel concierge will qualify your ' +
-  'trip shortly.';
+import {
+  logConversation,
+  getRecentConversationsForLead,
+} from '../services/supabase/conversations';
+import { qualifyLead, FALLBACK_REPLY } from '../agents/qualifier';
 
 interface InboundPayload {
   from: string; // normalized (no whatsapp: prefix)
@@ -55,8 +53,14 @@ function parseInbound(body: Record<string, unknown>): InboundPayload {
 }
 
 /**
- * Core inbound handler. Kept separate from the route so Step 3 can wrap/replace
- * the reply logic without touching transport concerns.
+ * Core inbound handler.
+ *
+ * Step 3: every inbound message is treated as a CUSTOMER lead message and run
+ * through the Claude qualifier, which extracts fields, classifies the segment,
+ * and writes the next warm reply.
+ *
+ * // Step 6 will route authenticated staff messages to the staff command parser.
+ * // For Step 3, all inbound messages are treated as customer lead messages.
  */
 async function handleInbound(payload: InboundPayload): Promise<void> {
   // 1. Find or create the lead by phone number.
@@ -70,7 +74,8 @@ async function handleInbound(payload: InboundPayload): Promise<void> {
     await updateLeadInboundActivity(lead.id, payload.profileName);
   }
 
-  // 2. Log the inbound customer message.
+  // 2. Log the inbound customer message FIRST (so it survives even if the
+  //    qualifier fails, and so it's part of the history we load next).
   await logConversation({
     leadId: lead.id,
     role: 'customer',
@@ -79,15 +84,41 @@ async function handleInbound(payload: InboundPayload): Promise<void> {
     twilioSid: payload.messageSid,
   });
 
-  // 3. Send the fixed test reply (Step 3: qualifier-generated reply).
-  const { sid: outboundSid } = await sendWhatsAppMessage(payload.from, TEST_REPLY);
+  // 3. Load recent history (includes the message we just logged).
+  const recentMessages = await getRecentConversationsForLead(lead.id, 12);
 
-  // 4. Log the outbound agent message + bump outbound activity.
+  // 4. Run the qualifier. It never throws — on failure it returns the fallback.
+  const result = await qualifyLead({
+    lead,
+    recentMessages,
+    inboundMessage: payload.body,
+  });
+
+  // 5. Persist extracted fields + status. Move 'new' leads at least to
+  //    'qualifying'; never overwrite known fields with null (helper handles it).
+  try {
+    await updateLeadQualification(lead.id, {
+      ...result.extractedFields,
+      status: result.status,
+    });
+  } catch (err) {
+    // Don't let a persistence hiccup block the reply — log and continue.
+    console.error(
+      '[twilio webhook] updateLeadQualification failed:',
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  // 6. Send the qualifier's reply (or the safe fallback).
+  const reply = result.reply?.trim() ? result.reply : FALLBACK_REPLY;
+  const { sid: outboundSid } = await sendWhatsAppMessage(payload.from, reply);
+
+  // 7. Log the outbound agent message + bump outbound activity.
   await logConversation({
     leadId: lead.id,
     role: 'agent',
     channel: 'whatsapp',
-    body: TEST_REPLY,
+    body: reply,
     twilioSid: outboundSid,
   });
   await updateLeadOutboundActivity(lead.id);

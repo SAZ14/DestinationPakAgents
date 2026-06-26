@@ -7,7 +7,31 @@
  */
 
 import { getSupabase } from './client';
-import type { LeadRow } from './types';
+import type { LeadRow, LeadSegment, LeadStatus } from './types';
+
+/**
+ * The subset of lead columns the qualifier may write. Snake_case so values map
+ * straight onto the table. All optional; callers should only pass fields they
+ * actually want to set (we never overwrite with null — see updateLeadQualification).
+ */
+export interface LeadQualificationPatch {
+  name?: string | null;
+  nationality?: string | null;
+  city?: string | null;
+  segment?: LeadSegment | null;
+  num_people?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  budget_usd?: number | null;
+  luxury_level?: string | null;
+  destinations?: string[] | null;
+  hotel_pref?: string | null;
+  transport_pref?: string | null;
+  dietary?: string | null;
+  visa_help?: boolean | null;
+  special_requests?: string | null;
+  status?: LeadStatus;
+}
 
 /** Find a lead by its normalized WhatsApp number. Returns null if none. */
 export async function findLeadByWhatsAppNumber(number: string): Promise<LeadRow | null> {
@@ -72,6 +96,54 @@ export async function updateLeadInboundActivity(
 
   const { error } = await supabase.from('leads').update(patch).eq('id', leadId);
   if (error) throw new Error(`updateLeadInboundActivity failed: ${error.message}`);
+}
+
+/** Fetch a single lead by id. Returns null if not found. */
+export async function getLeadById(leadId: string): Promise<LeadRow | null> {
+  const { data, error } = await getSupabase()
+    .from('leads')
+    .select('*')
+    .eq('id', leadId)
+    .maybeSingle();
+  if (error) throw new Error(`getLeadById failed: ${error.message}`);
+  return (data as LeadRow | null) ?? null;
+}
+
+/**
+ * Apply qualifier output to a lead.
+ *
+ * Only writes fields explicitly present in `patch`, and NEVER overwrites an
+ * existing value with null/empty (the qualifier sends only what it learned this
+ * turn; missing info stays missing rather than wiping prior answers). `status`
+ * is always applied when provided.
+ */
+export async function updateLeadQualification(
+  leadId: string,
+  patch: LeadQualificationPatch,
+): Promise<LeadRow> {
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (key === 'status') {
+      if (value) update.status = value;
+      continue;
+    }
+    // Skip null/undefined so we don't clobber previously-captured fields.
+    if (value === null || value === undefined) continue;
+    // Skip empty strings / empty arrays (no signal).
+    if (typeof value === 'string' && value.trim() === '') continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    update[key] = value;
+  }
+
+  const { data, error } = await getSupabase()
+    .from('leads')
+    .update(update)
+    .eq('id', leadId)
+    .select('*')
+    .single();
+  if (error) throw new Error(`updateLeadQualification failed: ${error.message}`);
+  return data as LeadRow;
 }
 
 /** Record outbound activity (bumps `last_outbound_at`). */

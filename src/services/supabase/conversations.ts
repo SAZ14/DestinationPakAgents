@@ -33,3 +33,22 @@ export async function logConversation(input: LogConversationInput): Promise<Conv
   if (error) throw new Error(`logConversation failed: ${error.message}`);
   return data as ConversationRow;
 }
+
+/**
+ * Recent conversation history for a lead, returned oldest → newest so it can be
+ * fed to Claude in chronological order. Fetches the latest `limit` rows.
+ */
+export async function getRecentConversationsForLead(
+  leadId: string,
+  limit = 12,
+): Promise<ConversationRow[]> {
+  const { data, error } = await getSupabase()
+    .from('conversations')
+    .select('*')
+    .eq('lead_id', leadId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(`getRecentConversationsForLead failed: ${error.message}`);
+  return ((data as ConversationRow[] | null) ?? []).reverse();
+}
