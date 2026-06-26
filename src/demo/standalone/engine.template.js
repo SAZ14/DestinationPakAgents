@@ -4,6 +4,7 @@ const PACKAGES = __PACKAGES__;
 const QUALIFIER_SYSTEM = __QUALSYS__;
 const QUOTE_SYSTEM = __QUOTESYS__;
 const MODEL = __MODEL__;
+const API_BASE = __BASE__; // Anthropic-compatible endpoint (e.g. z.ai)
 const WELCOME = __WELCOME__;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -68,7 +69,7 @@ function newLiveLead() {
 }
 
 function goLive() {
-  const key = (API_KEY || prompt('Paste your Anthropic API key (sk-ant-…). It stays in this browser only and is never uploaded anywhere except Anthropic.') || '').trim();
+  const key = (API_KEY || prompt('Paste your z.ai API key. It stays in this browser only and is sent solely to z.ai (api.z.ai).') || '').trim();
   if (!key) return;
   API_KEY = key;
   LIVE = true;
@@ -178,11 +179,12 @@ function extractJson(text) {
 }
 
 async function callClaude(system, userContent, maxTokens) {
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
+  const r = await fetch(API_BASE + '/v1/messages', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-api-key': API_KEY,
+      'authorization': 'Bearer ' + API_KEY,
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },

@@ -58,9 +58,12 @@ export const env = {
   twilioAuthToken: optional('TWILIO_AUTH_TOKEN'),
   twilioWhatsappFrom: optional('TWILIO_WHATSAPP_FROM') ?? 'whatsapp:+14155238886',
 
-  // Anthropic
+  // Anthropic (or any Anthropic-compatible provider, e.g. z.ai / GLM).
   anthropicApiKey: optional('ANTHROPIC_API_KEY'),
   anthropicModel: optional('ANTHROPIC_MODEL') ?? 'claude-opus-4-8',
+  // Optional custom base URL. Point this at an Anthropic-compatible endpoint to
+  // use a different provider, e.g. z.ai: https://api.z.ai/api/anthropic
+  anthropicBaseUrl: optional('ANTHROPIC_BASE_URL'),
 
   // Staff
   staffApproverNumbers: list('STAFF_APPROVER_NUMBERS'),
@@ -104,7 +107,7 @@ export function requireTwilio(): {
   };
 }
 
-export function requireAnthropic(): { apiKey: string; model: string } {
+export function requireAnthropic(): { apiKey: string; model: string; baseUrl?: string } {
   requireKeys([{ name: 'ANTHROPIC_API_KEY', value: env.anthropicApiKey }]);
-  return { apiKey: env.anthropicApiKey!, model: env.anthropicModel };
+  return { apiKey: env.anthropicApiKey!, model: env.anthropicModel, baseUrl: env.anthropicBaseUrl };
 }
