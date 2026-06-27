@@ -110,12 +110,15 @@
   </div>
 
   <div class="controls">
+    <button class="btn" id="engine" disabled>⚙️ Engine: …</button>
     <button class="btn" id="replay">▶ Replay scripted demo</button>
     <button class="btn" id="clear">Clear</button>
   </div>
   <div class="hint">
-    The scripted demo runs anywhere (just open this file). To ask your own questions live,
-    serve it from the backend: <code>uvicorn app.main:app</code> then open <code>/demo</code>.
+    <b>Replay</b> plays a recorded conversation and runs anywhere (just open this file).
+    Type a question for <b>live</b> answers — toggle <b>🤖 Claude</b> (real Haiku + Sonnet)
+    or <b>⚡ Instant</b> (deterministic). Live needs the backend:
+    <code>uvicorn app.main:app</code> → open <code>/demo</code>.
   </div>
 
 <script>
@@ -152,12 +155,21 @@ function scroll(){chat.scrollTop = chat.scrollHeight;}
 
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function fmt(text, draft){
-  const lines = esc(text).split("\n").map(l=>{
-    l = l.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-    if(l.trimStart().startsWith('•')) return '<span class="li">'+l+'</span>';
-    return l;
-  });
-  return lines.join('<br>');
+  const out=[];
+  for(let l of esc(text).split("\n")){
+    // Collapse markdown tables (WhatsApp has none): drop separator rows,
+    // turn "| a | b |" into a bullet "• a · b".
+    if(l.includes('|')){
+      const cells=l.split('|').map(s=>s.trim()).filter(s=>s.length);
+      if(!cells.length || cells.every(c=>/^:?-+:?$/.test(c))) continue;
+      l='• '+cells.join('  ·  ');
+    }
+    l=l.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    l=l.replace(/(^|\s)\*(?!\s)(.+?)\*(?=\s|$|[.,!?])/g,'$1<em>$2</em>'); // *italic*
+    if(l.trimStart().startsWith('•')) out.push('<span class="li">'+l+'</span>');
+    else out.push(l);
+  }
+  return out.join('<br>');
 }
 function addBubble(side, html, opts={}){
   const row=document.createElement('div'); row.className='row '+side;
@@ -167,13 +179,16 @@ function addBubble(side, html, opts={}){
   b.innerHTML = html + (opts.system?'':'<span class="meta">'+tstamp()+ticks+'</span>');
   row.appendChild(b); chat.appendChild(row); scroll(); return row;
 }
-async function typing(side='in', ms=750){
+function showTyping(side='in'){
   const row=document.createElement('div'); row.className='row '+side;
   row.innerHTML='<div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div>';
-  chat.appendChild(row); scroll(); await sleep(ms); row.remove();
+  chat.appendChild(row); scroll(); return row;
+}
+async function typing(side='in', ms=750){
+  const row=showTyping(side); await sleep(ms); row.remove();
 }
 
-let playing=false;
+let playing=false, cancel=false;
 async function agentRespond(owner, reply, opts={}){
   // Two-message pattern: instant ack, then the real answer.
   await typing('in', 500);
@@ -184,33 +199,62 @@ async function agentRespond(owner, reply, opts={}){
 }
 
 async function playScript(){
-  if(playing) return; playing=true;
+  if(playing) return; playing=true; cancel=false;
   chat.innerHTML=''; clock=9*60+41;
   addBubble('in','👋 I’m your Chief of Staff. Ask me anything about the business — leads, quotes, vendors, competitors. Drafts wait for your <strong>SEND</strong> before anything goes out.');
   await sleep(700);
   for(const turn of SCRIPT){
+    if(cancel) break;
     addBubble('out', esc(turn.owner));
-    await sleep(350);
+    await sleep(350); if(cancel) break;
     await agentRespond(turn.owner, turn.reply, {draft:turn.draft});
     await sleep(turn.draft?900:550);
   }
   playing=false;
 }
+function stopPlay(){ cancel=true; playing=false; }
 
 // --- Live mode (works when served from the backend) ---
-async function liveAsk(text){
-  addBubble('out', esc(text));
-  await typing('in',400);
-  addBubble('in','<span class="ackline">'+esc(ACK)+'</span>');
-  await typing('in',700);
+let ENGINE='mock', LLM_AVAILABLE=false;
+
+function updateEngineUI(){
+  const btn=document.getElementById('engine');
+  const presence=document.getElementById('presence');
+  if(ENGINE==='live'){
+    btn.textContent='🤖 Engine: Claude (live)';
+    presence.textContent='Destination Pakistan · 🤖 Claude';
+  }else{
+    btn.textContent = LLM_AVAILABLE ? '⚡ Engine: Instant (mock)' : '⚡ Engine: Instant (offline)';
+    presence.textContent='Destination Pakistan · online';
+  }
+  btn.disabled=false;
+}
+async function loadInfo(){
   try{
-    const body = new URLSearchParams({To:TENANT_NUMBER, From:OWNER_NUMBER, Body:text});
-    const res = await fetch('./demo/simulate',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    const r=await fetch('./demo/info'); if(!r.ok) throw 0;
+    const j=await r.json();
+    LLM_AVAILABLE=!!j.llm_available; ENGINE=LLM_AVAILABLE?'live':'mock';
+  }catch(e){ LLM_AVAILABLE=false; ENGINE='mock'; }
+  updateEngineUI();
+}
+
+async function liveAsk(text){
+  stopPlay();                       // a typed question interrupts the replay
+  addBubble('out', esc(text));
+  await typing('in',350);
+  addBubble('in','<span class="ackline">'+esc(ACK)+'</span>');
+  const wait=showTyping('in');           // persists for the whole round-trip
+  try{
+    const body=new URLSearchParams({To:TENANT_NUMBER, From:OWNER_NUMBER, Body:text, engine:ENGINE});
+    const res=await fetch('./demo/simulate',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
     if(!res.ok) throw new Error('http '+res.status);
-    const data = await res.json();
-    addBubble('in', fmt(data.reply||'(no reply)', /Draft:/.test(data.reply)), {draft:/Draft:/.test(data.reply)});
+    const data=await res.json();
+    wait.remove();
+    const isDraft=/Draft:/i.test(data.reply||'');
+    addBubble('in', fmt(data.reply||'(no reply)', isDraft), {draft:isDraft});
   }catch(e){
-    addBubble('', 'Live Q&A needs the demo server. Run <code>uvicorn app.main:app</code> and open <code>/demo</code>. The scripted demo (▶ Replay) runs anywhere.', {system:true});
+    wait.remove();
+    addBubble('', 'Live Q&A needs the demo server — run <code>uvicorn app.main:app</code> and open <code>/demo</code>. (▶ Replay works anywhere.)', {system:true});
   }
 }
 
@@ -218,10 +262,23 @@ document.getElementById('send').onclick=()=>{
   const i=document.getElementById('msg'); const t=i.value.trim(); if(!t)return; i.value=''; liveAsk(t);
 };
 document.getElementById('msg').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('send').click();});
+document.getElementById('engine').onclick=()=>{
+  if(!LLM_AVAILABLE){
+    addBubble('', 'Live AI isn’t available here. Set <code>ANTHROPIC_API_KEY</code> and serve via <code>/demo</code> to switch on 🤖 Claude.', {system:true});
+    return;
+  }
+  ENGINE = ENGINE==='live' ? 'mock' : 'live'; updateEngineUI();
+};
 document.getElementById('replay').onclick=playScript;
-document.getElementById('clear').onclick=()=>{chat.innerHTML='';clock=9*60+41;};
+document.getElementById('clear').onclick=()=>{stopPlay();chat.innerHTML='';clock=9*60+41;};
 
-playScript();
+loadInfo();
+// ?noauto skips the scripted replay and starts on a clean chat (live Q&A only).
+if(new URLSearchParams(location.search).has('noauto')){
+  addBubble('in','👋 I’m your Chief of Staff. Ask me anything — leads, quotes, vendors, competitors. Drafts wait for your <strong>SEND</strong>.');
+}else{
+  playScript();
+}
 </script>
 </body>
 </html>

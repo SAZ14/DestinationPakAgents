@@ -424,7 +424,13 @@ class LiveAnthropic(AnthropicAdapter):
             return self._fallback.classify(message)
 
     def orchestrate(self, *, message: str, classification: dict, ctx: ToolContext) -> str:
-        system = ORCHESTRATOR_SYSTEM + f"\n\nRuntime date: {ctx.today.isoformat()}."
+        system = (
+            ORCHESTRATOR_SYSTEM
+            + f"\n\nRuntime date: {ctx.today.isoformat()}."
+            + "\nThis is WhatsApp — plain text only. Do NOT use markdown tables or | pipes; "
+            "use short lines, one item per line starting with '• '. Bold the single key figure "
+            "with **double asterisks**. Keep it tight."
+        )
         messages = [{"role": "user", "content": message}]
         try:
             for _ in range(6):  # bounded tool loop

@@ -33,11 +33,17 @@ logger = logging.getLogger("chief_of_staff.app")
 
 _DEMO_HTML = Path(__file__).parent / "static" / "demo.html"
 
-# The WhatsApp demo always runs the deterministic mock (never the network), so a
-# competitor query in front of a client can't hang on a live Apify call.
-_DEMO_SETTINGS = dataclasses.replace(
+# Two demo brains, both with Apify/Twilio blanked so a competitor query can't
+# hang on a live scrape and nothing is actually sent:
+#   * mock — deterministic, instant, offline.
+#   * live — real Claude (Haiku classify + Sonnet orchestrate) when a key is
+#     present; the page can toggle between them.
+_DEMO_MOCK_SETTINGS = dataclasses.replace(
     SETTINGS, anthropic_api_key=None, apify_token=None,
     twilio_account_sid=None, twilio_auth_token=None,
+)
+_DEMO_LIVE_SETTINGS = dataclasses.replace(
+    SETTINGS, apify_token=None, twilio_account_sid=None, twilio_auth_token=None,
 )
 _DEMO_OWNER = "whatsapp:+923001112233"
 
@@ -64,8 +70,9 @@ def create_app(*, agent: Agent | None = None, twilio: TwilioClient | None = None
     app = FastAPI(title="Chief of Staff Agent", version="0.1.0")
     app.state.agent = agent or build_agent(settings)
     app.state.twilio = twilio or TwilioClient(settings)
-    # Separate, always-mocked agent for the visual WhatsApp demo.
-    app.state.demo_agent = build_agent(_DEMO_SETTINGS)
+    # Demo agents for the visual WhatsApp demo (Apify/Twilio always mocked).
+    app.state.demo_agent_mock = build_agent(_DEMO_MOCK_SETTINGS)
+    app.state.demo_agent_live = build_agent(_DEMO_LIVE_SETTINGS)
 
     def _process(*, tenant_id: str, sender: str, to: str, body: str) -> None:
         try:
@@ -106,20 +113,34 @@ def create_app(*, agent: Agent | None = None, twilio: TwilioClient | None = None
         """Serve the WhatsApp-styled demo page (same-origin to /demo/simulate)."""
         return HTMLResponse(_DEMO_HTML.read_text(encoding="utf-8"))
 
+    @app.get("/demo/info")
+    def demo_info():
+        """Tell the page whether the live LLM brain is available, so it can
+        default to it and show the right engine badge."""
+        return {
+            "llm_available": _DEMO_LIVE_SETTINGS.anthropic_live,
+            "classifier_model": _DEMO_LIVE_SETTINGS.classifier_model,
+            "orchestrator_model": _DEMO_LIVE_SETTINGS.orchestrator_model,
+        }
+
     @app.post("/demo/simulate")
     async def demo_simulate(request: Request):
-        """Back the demo page's live Q&A with the deterministic mock agent.
-        No auth gate (sandbox demo); fixed tenant so pending drafts persist
-        across the draft→SEND exchange."""
+        """Back the demo page's live Q&A. `engine` selects the brain:
+        'live' = real Claude (Haiku+Sonnet), 'mock' = deterministic, '' =
+        live if available else mock. No auth gate (sandbox demo); fixed tenant
+        so pending drafts persist across the draft→SEND exchange."""
         form = await request.form()
         body = (form.get("Body") or "").strip()
         sender = form.get("From") or _DEMO_OWNER
+        engine = (form.get("engine") or "").lower()
         if not body:
-            return {"reply": ""}
-        reply = app.state.demo_agent.handle(
-            message=body, tenant_id="destination-pakistan", sender=sender
-        )
-        return {"reply": reply}
+            return {"reply": "", "engine": "mock"}
+
+        want_live = engine == "live" or (engine == "" and _DEMO_LIVE_SETTINGS.anthropic_live)
+        use_live = want_live and _DEMO_LIVE_SETTINGS.anthropic_live
+        agent = app.state.demo_agent_live if use_live else app.state.demo_agent_mock
+        reply = agent.handle(message=body, tenant_id="destination-pakistan", sender=sender)
+        return {"reply": reply, "engine": "live" if use_live else "mock"}
 
     @app.post("/simulate")
     async def simulate(request: Request):

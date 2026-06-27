@@ -123,8 +123,11 @@ A self-contained, WhatsApp-styled chat page at **`app/static/demo.html`**:
   competitor undercut flags, and the draft→`SEND` confirm gate). No server, no
   credentials — perfect to email a client.
 - **Live Q&A** — `uvicorn app.main:app` then open `http://localhost:8000/demo`.
-  The input box POSTs to `/demo/simulate` (a deterministic, always-mocked agent —
-  it never touches the network, so a competitor query can't hang mid-demo).
+  Type your own questions; the **Engine** button toggles **🤖 Claude (live)** —
+  real Haiku (classify) + Sonnet (tool loop) when `ANTHROPIC_API_KEY` is set —
+  and **⚡ Instant** (deterministic mock). Either way Apify/Twilio stay mocked, so
+  a competitor query can't hang and nothing is actually sent. Append `?noauto`
+  (`/demo?noauto`) to skip the scripted intro and start on a clean chat.
 
 ### Curl — simulate an owner message
 
