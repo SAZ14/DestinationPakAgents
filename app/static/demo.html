@@ -115,13 +115,140 @@
     <button class="btn" id="clear">Clear</button>
   </div>
   <div class="hint">
-    <b>Replay</b> plays a recorded conversation and runs anywhere (just open this file).
-    Type a question for <b>live</b> answers — toggle <b>🤖 Claude</b> (real Haiku + Sonnet)
-    or <b>⚡ Instant</b> (deterministic). Live needs the backend:
-    <code>uvicorn app.main:app</code> → open <code>/demo</code>.
+    Fully interactive offline — type any question and the <b>in-browser</b> brain answers from the
+    demo data (try “pipeline this month”, “worst vendors”, “draft a follow-up to Hunza leads”, then
+    “SEND …”). Serve it (<code>uvicorn app.main:app</code> → <code>/demo</code>) to switch the engine
+    to <b>🤖 Claude</b> (real Haiku + Sonnet). <b>▶ Replay</b> plays a recording.
   </div>
 
 <script>
+const SEED = {"today": "2026-06-26", "leads": [{"id": "L001", "name": "James Carter", "nationality": "American", "source": "instagram", "destination": "Hunza", "trip_type": "cultural", "budget_usd": 2000, "party_size": 2, "status": "quoted", "created_at": "2026-06-21"}, {"id": "L002", "name": "Emma Thompson", "nationality": "British", "source": "referral", "destination": "Skardu", "trip_type": "adventure", "budget_usd": 2600, "party_size": 2, "status": "booked", "created_at": "2026-05-17"}, {"id": "L003", "name": "Lukas Müller", "nationality": "German", "source": "website", "destination": "Fairy Meadows", "trip_type": "trekking", "budget_usd": 2200, "party_size": 1, "status": "negotiating", "created_at": "2026-06-18"}, {"id": "L004", "name": "Sophie Dubois", "nationality": "French", "source": "instagram", "destination": "Hunza", "trip_type": "cultural", "budget_usd": 1900, "party_size": 2, "status": "quoted", "created_at": "2026-06-14"}, {"id": "L005", "name": "Hiroshi Tanaka", "nationality": "Japanese", "source": "website", "destination": "K2", "trip_type": "trekking", "budget_usd": 3500, "party_size": 1, "status": "new", "created_at": "2026-06-24"}, {"id": "L006", "name": "Olivia Brown", "nationality": "Australian", "source": "facebook", "destination": "Swat", "trip_type": "cultural", "budget_usd": 1600, "party_size": 4, "status": "ghosted", "created_at": "2026-06-04"}, {"id": "L007", "name": "Marco Rossi", "nationality": "Italian", "source": "instagram", "destination": "Skardu", "trip_type": "adventure", "budget_usd": 2500, "party_size": 2, "status": "quoted", "created_at": "2026-06-20"}, {"id": "L008", "name": "Anna Kowalski", "nationality": "Polish", "source": "referral", "destination": "Chitral", "trip_type": "cultural", "budget_usd": 2100, "party_size": 2, "status": "lost", "created_at": "2026-05-22"}, {"id": "L009", "name": "David Smith", "nationality": "American", "source": "website", "destination": "Hunza", "trip_type": "cultural", "budget_usd": 2000, "party_size": 3, "status": "quoted", "created_at": "2026-06-22"}, {"id": "L010", "name": "Maria Garcia", "nationality": "Spanish", "source": "instagram", "destination": "Fairy Meadows", "trip_type": "trekking", "budget_usd": 2300, "party_size": 2, "status": "booked", "created_at": "2026-05-27"}, {"id": "L011", "name": "Chen Wei", "nationality": "Chinese", "source": "website", "destination": "K2", "trip_type": "trekking", "budget_usd": 3400, "party_size": 2, "status": "new", "created_at": "2026-06-25"}, {"id": "L012", "name": "Liam O'Brien", "nationality": "Irish", "source": "facebook", "destination": "Skardu", "trip_type": "adventure", "budget_usd": 2400, "party_size": 2, "status": "negotiating", "created_at": "2026-06-17"}, {"id": "L013", "name": "Nina Hansen", "nationality": "Norwegian", "source": "instagram", "destination": "Hunza", "trip_type": "cultural", "budget_usd": 1850, "party_size": 1, "status": "ghosted", "created_at": "2026-06-08"}, {"id": "L014", "name": "Tom Wilson", "nationality": "American", "source": "referral", "destination": "Swat", "trip_type": "cultural", "budget_usd": 1550, "party_size": 2, "status": "quoted", "created_at": "2026-06-19"}, {"id": "L015", "name": "Clara Weber", "nationality": "German", "source": "website", "destination": "Chitral", "trip_type": "cultural", "budget_usd": 2200, "party_size": 2, "status": "new", "created_at": "2026-06-23"}, {"id": "L016", "name": "Ahmed Al-Rashid", "nationality": "Emirati", "source": "referral", "destination": "Skardu", "trip_type": "adventure", "budget_usd": 3000, "party_size": 4, "status": "booked", "created_at": "2026-06-01"}, {"id": "L017", "name": "Grace Lee", "nationality": "Canadian", "source": "instagram", "destination": "Hunza", "trip_type": "cultural", "budget_usd": 1950, "party_size": 2, "status": "quoted", "created_at": "2026-06-12"}, {"id": "L018", "name": "Pieter Bakker", "nationality": "Dutch", "source": "website", "destination": "Fairy Meadows", "trip_type": "trekking", "budget_usd": 2150, "party_size": 2, "status": "lost", "created_at": "2026-05-12"}], "conversations": [{"id": "C001", "lead_id": "L001", "channel": "whatsapp", "last_inbound_at": "2026-06-22", "last_outbound_at": "2026-06-23", "last_quote_at": "2026-06-23", "state": "quoted"}, {"id": "C002", "lead_id": "L002", "channel": "whatsapp", "last_inbound_at": "2026-05-18", "last_outbound_at": "2026-05-19", "last_quote_at": "2026-05-19", "state": "booked"}, {"id": "C003", "lead_id": "L003", "channel": "whatsapp", "last_inbound_at": "2026-06-19", "last_outbound_at": "2026-06-20", "last_quote_at": "2026-06-20", "state": "negotiating"}, {"id": "C004", "lead_id": "L004", "channel": "whatsapp", "last_inbound_at": "2026-06-15", "last_outbound_at": "2026-06-16", "last_quote_at": "2026-06-16", "state": "quoted"}, {"id": "C005", "lead_id": "L005", "channel": "whatsapp", "last_inbound_at": "2026-06-25", "last_outbound_at": null, "last_quote_at": null, "state": "new"}, {"id": "C006", "lead_id": "L006", "channel": "whatsapp", "last_inbound_at": "2026-06-04", "last_outbound_at": null, "last_quote_at": null, "state": "ghosted"}, {"id": "C007", "lead_id": "L007", "channel": "whatsapp", "last_inbound_at": "2026-06-21", "last_outbound_at": "2026-06-22", "last_quote_at": "2026-06-22", "state": "quoted"}, {"id": "C008", "lead_id": "L008", "channel": "whatsapp", "last_inbound_at": "2026-05-23", "last_outbound_at": "2026-05-24", "last_quote_at": "2026-05-24", "state": "lost"}, {"id": "C009", "lead_id": "L009", "channel": "whatsapp", "last_inbound_at": "2026-06-23", "last_outbound_at": "2026-06-24", "last_quote_at": "2026-06-24", "state": "quoted"}, {"id": "C010", "lead_id": "L010", "channel": "whatsapp", "last_inbound_at": "2026-05-28", "last_outbound_at": "2026-05-29", "last_quote_at": "2026-05-29", "state": "booked"}, {"id": "C011", "lead_id": "L011", "channel": "whatsapp", "last_inbound_at": "2026-06-26", "last_outbound_at": null, "last_quote_at": null, "state": "new"}, {"id": "C012", "lead_id": "L012", "channel": "whatsapp", "last_inbound_at": "2026-06-18", "last_outbound_at": "2026-06-19", "last_quote_at": "2026-06-19", "state": "negotiating"}, {"id": "C013", "lead_id": "L013", "channel": "whatsapp", "last_inbound_at": "2026-06-08", "last_outbound_at": null, "last_quote_at": null, "state": "ghosted"}, {"id": "C014", "lead_id": "L014", "channel": "whatsapp", "last_inbound_at": "2026-06-20", "last_outbound_at": "2026-06-21", "last_quote_at": "2026-06-21", "state": "quoted"}, {"id": "C015", "lead_id": "L015", "channel": "whatsapp", "last_inbound_at": "2026-06-24", "last_outbound_at": null, "last_quote_at": null, "state": "new"}, {"id": "C016", "lead_id": "L016", "channel": "whatsapp", "last_inbound_at": "2026-06-02", "last_outbound_at": "2026-06-03", "last_quote_at": "2026-06-03", "state": "booked"}, {"id": "C017", "lead_id": "L017", "channel": "whatsapp", "last_inbound_at": "2026-06-13", "last_outbound_at": "2026-06-14", "last_quote_at": "2026-06-14", "state": "quoted"}, {"id": "C018", "lead_id": "L018", "channel": "whatsapp", "last_inbound_at": "2026-05-13", "last_outbound_at": "2026-05-14", "last_quote_at": "2026-05-14", "state": "lost"}], "quotes": [{"id": "Q001", "lead_id": "L001", "trip_id": "trip-hunza", "amount_usd": 2000, "sent_at": "2026-06-23", "accepted_at": null}, {"id": "Q002", "lead_id": "L002", "trip_id": "trip-skardu", "amount_usd": 2600, "sent_at": "2026-05-19", "accepted_at": "2026-05-27"}, {"id": "Q003", "lead_id": "L003", "trip_id": "trip-fairy", "amount_usd": 2200, "sent_at": "2026-06-20", "accepted_at": null}, {"id": "Q004", "lead_id": "L004", "trip_id": "trip-hunza", "amount_usd": 1900, "sent_at": "2026-06-16", "accepted_at": null}, {"id": "Q007", "lead_id": "L007", "trip_id": "trip-skardu", "amount_usd": 2500, "sent_at": "2026-06-22", "accepted_at": null}, {"id": "Q008", "lead_id": "L008", "trip_id": "trip-chitral", "amount_usd": 2100, "sent_at": "2026-05-24", "accepted_at": null}, {"id": "Q009", "lead_id": "L009", "trip_id": "trip-hunza", "amount_usd": 2000, "sent_at": "2026-06-24", "accepted_at": null}, {"id": "Q010", "lead_id": "L010", "trip_id": "trip-fairy", "amount_usd": 2300, "sent_at": "2026-05-29", "accepted_at": "2026-06-06"}, {"id": "Q012", "lead_id": "L012", "trip_id": "trip-skardu", "amount_usd": 2400, "sent_at": "2026-06-19", "accepted_at": null}, {"id": "Q014", "lead_id": "L014", "trip_id": "trip-swat", "amount_usd": 1550, "sent_at": "2026-06-21", "accepted_at": null}, {"id": "Q016", "lead_id": "L016", "trip_id": "trip-skardu", "amount_usd": 3000, "sent_at": "2026-06-03", "accepted_at": "2026-06-11"}, {"id": "Q017", "lead_id": "L017", "trip_id": "trip-hunza", "amount_usd": 1950, "sent_at": "2026-06-14", "accepted_at": null}, {"id": "Q018", "lead_id": "L018", "trip_id": "trip-fairy", "amount_usd": 2150, "sent_at": "2026-05-14", "accepted_at": null}], "bookings": [{"id": "B002", "lead_id": "L002", "trip_id": "trip-skardu", "deposit_paid": true, "total_usd": 2600, "start_date": "2026-07-18", "status": "confirmed", "created_at": "2026-05-29"}, {"id": "B010", "lead_id": "L010", "trip_id": "trip-fairy", "deposit_paid": true, "total_usd": 2300, "start_date": "2026-07-26", "status": "confirmed", "created_at": "2026-06-08"}, {"id": "B016", "lead_id": "L016", "trip_id": "trip-skardu", "deposit_paid": true, "total_usd": 3000, "start_date": "2026-08-01", "status": "confirmed", "created_at": "2026-06-13"}], "trips": [{"id": "trip-hunza", "name": "Hunza Valley Explorer", "destination": "Hunza", "trip_type": "cultural", "base_price_usd": 1800, "duration_days": 8}, {"id": "trip-skardu", "name": "Skardu & Deosai", "destination": "Skardu", "trip_type": "adventure", "base_price_usd": 2400, "duration_days": 10}, {"id": "trip-fairy", "name": "Fairy Meadows & Nanga Parbat BC", "destination": "Fairy Meadows", "trip_type": "trekking", "base_price_usd": 2100, "duration_days": 9}, {"id": "trip-k2", "name": "K2 Base Camp / Concordia", "destination": "K2", "trip_type": "trekking", "base_price_usd": 3500, "duration_days": 18}, {"id": "trip-swat", "name": "Swat & Kalam Getaway", "destination": "Swat", "trip_type": "cultural", "base_price_usd": 1500, "duration_days": 6}, {"id": "trip-chitral", "name": "Chitral & Kalash Valleys", "destination": "Chitral", "trip_type": "cultural", "base_price_usd": 2200, "duration_days": 9}], "vendors": [{"id": "v-eagle", "name": "Eagle's Nest Hotel", "vendor_type": "hotel", "region": "Hunza"}, {"id": "v-serena", "name": "Serena Shigar Fort", "vendor_type": "hotel", "region": "Skardu"}, {"id": "v-karim", "name": "Karim Ullah (Guide)", "vendor_type": "guide", "region": "Hunza"}, {"id": "v-littlekarim", "name": "Little Karim Porters", "vendor_type": "porter", "region": "Skardu"}, {"id": "v-raja", "name": "Raja Transport Co.", "vendor_type": "transport", "region": "Gilgit-Baltistan"}, {"id": "v-ali", "name": "Ali Hassan (Driver)", "vendor_type": "driver", "region": "Lahore"}, {"id": "v-concordia", "name": "Concordia Porter Team", "vendor_type": "porter", "region": "Skardu"}, {"id": "v-ptdc", "name": "PTDC Motel Kalam", "vendor_type": "hotel", "region": "Swat"}], "vendor_feedback": [{"id": "VF1", "vendor_id": "v-eagle", "booking_id": "B002", "rating_1_5": 5, "sentiment": "positive", "note": "Guests loved the valley views.", "created_at": "2026-06-06"}, {"id": "VF2", "vendor_id": "v-raja", "booking_id": "B002", "rating_1_5": 2, "sentiment": "negative", "note": "Van broke down near Chilas, 3hr delay.", "created_at": "2026-06-07"}, {"id": "VF3", "vendor_id": "v-serena", "booking_id": "B016", "rating_1_5": 5, "sentiment": "positive", "note": "Flawless service at Shigar Fort.", "created_at": "2026-06-16"}, {"id": "VF4", "vendor_id": "v-littlekarim", "booking_id": "B010", "rating_1_5": 4, "sentiment": "positive", "note": "Strong porters, good pace.", "created_at": "2026-06-11"}, {"id": "VF5", "vendor_id": "v-ali", "booking_id": "B010", "rating_1_5": 1, "sentiment": "negative", "note": "Driver late for airport pickup twice.", "created_at": "2026-06-12"}, {"id": "VF6", "vendor_id": "v-concordia", "booking_id": "B016", "rating_1_5": 2, "sentiment": "negative", "note": "Porter strike threat at Concordia.", "created_at": "2026-06-17"}, {"id": "VF7", "vendor_id": "v-ptdc", "booking_id": "B002", "rating_1_5": 3, "sentiment": "neutral", "note": "Rooms dated but clean.", "created_at": "2026-05-17"}], "reviews": [{"id": "R1", "trip_id": "trip-skardu", "booking_id": "B002", "rating_1_5": 5, "sentiment": "positive", "text": "Trip of a lifetime, Deosai was unreal.", "source": "tripadvisor", "created_at": "2026-06-08"}, {"id": "R2", "trip_id": "trip-fairy", "booking_id": "B010", "rating_1_5": 4, "sentiment": "positive", "text": "Nanga Parbat views worth the hike.", "source": "google", "created_at": "2026-06-14"}, {"id": "R3", "trip_id": "trip-skardu", "booking_id": "B016", "rating_1_5": 2, "sentiment": "negative", "text": "Logistics were rough, transport let us down.", "source": "tripadvisor", "created_at": "2026-06-18"}, {"id": "R4", "trip_id": "trip-swat", "booking_id": "B002", "rating_1_5": 3, "sentiment": "neutral", "text": "Pretty but hotels need an upgrade.", "source": "google", "created_at": "2026-05-19"}], "competitors": [{"id": "cmp1", "name": "Hunza Explorers", "handle": "@hunzaexplorers", "platform": "instagram"}, {"id": "cmp2", "name": "Karakoram Tours", "handle": "@karakoramtours", "platform": "instagram"}, {"id": "cmp3", "name": "Apricot Tours", "handle": "@apricottours_pk", "platform": "instagram"}]};
+
+// ---- In-browser brain: faithful port of the deterministic mock agent over the
+// embedded demo data, so typed questions work with no backend. ----
+(function(){
+  const T=SEED, TODAY=new Date(SEED.today+"T00:00:00"), DAY=86400000;
+  const dsince=d=>d?Math.round((TODAY-new Date(d.slice(0,10)+"T00:00:00"))/DAY):null;
+  const money=n=>'$'+Number(n).toLocaleString('en-US');
+  const DESTS={hunza:'Hunza',skardu:'Skardu','fairy meadows':'Fairy Meadows',fairy:'Fairy Meadows',naran:'Naran',kashmir:'Kashmir',swat:'Swat',kalam:'Swat',chitral:'Chitral',islamabad:'Islamabad',lahore:'Lahore',k2:'K2',concordia:'K2','south pakistan':'South Pakistan'};
+  const NATS=['american','british','german','french','japanese','australian','italian','polish','spanish','chinese','irish','norwegian','canadian','emirati','dutch'];
+  const STATUSES=['new','quoted','negotiating','booked','lost','ghosted'];
+  const VTYPES=['hotel','guide','driver','transport','porter'];
+  const COMPS={hunza:[{c:'Hunza Explorers',p:'7-Day Hunza Cultural',price:1650,d:7},{c:'Apricot Tours',p:'8-Day Hunza Heritage',price:1950,d:8}],
+    skardu:[{c:'Karakoram Tours',p:'10-Day Skardu & Deosai',price:2250,d:10}],
+    k2:[{c:'Karakoram Tours',p:'18-Day K2 Base Camp',price:3300,d:18}]};
+  const DEFCOMP=[{c:'Karakoram Tours',p:'Northern Pakistan Highlights',price:2100,d:9}];
+  const booked=()=>new Set(T.bookings.map(b=>b.lead_id));
+  const eq=(a,b)=>!b||String(a||'').toLowerCase()===String(b).toLowerCase();
+  function twin(tok){ if(!tok) return null; const d=new Date(TODAY),iso=x=>x.toISOString().slice(0,10),mk=(a,b)=>[iso(a),iso(b)],dow=(d.getDay()+6)%7;
+    if(tok==='today')return mk(d,d);
+    if(tok==='this_week'){const m=new Date(d);m.setDate(d.getDate()-dow);const e=new Date(m);e.setDate(m.getDate()+6);return mk(m,e);}
+    if(tok==='last_week'){const m=new Date(d);m.setDate(d.getDate()-dow-7);const e=new Date(m);e.setDate(m.getDate()+6);return mk(m,e);}
+    if(tok==='this_month')return mk(new Date(d.getFullYear(),d.getMonth(),1),new Date(d.getFullYear(),d.getMonth()+1,0));
+    if(tok==='last_month')return mk(new Date(d.getFullYear(),d.getMonth()-1,1),new Date(d.getFullYear(),d.getMonth(),0));
+    if(tok==='last_30_days')return mk(new Date(d-29*DAY),d);
+    if(tok==='this_year')return mk(new Date(d.getFullYear(),0,1),d);
+    if(tok==='last_year')return mk(new Date(d.getFullYear()-1,0,1),new Date(d.getFullYear()-1,11,31));
+    return null; }
+  const inrng=(s,r)=>!r?true:(!s?false:(s.slice(0,10)>=r[0]&&s.slice(0,10)<=r[1]));
+  const lmatch=(l,e,r)=>eq(l.destination,e.destination)&&eq(l.nationality,e.nationality)&&eq(l.trip_type,e.trip_type)&&eq(l.status,e.status)&&(e.budget_usd_min==null||l.budget_usd>=e.budget_usd_min)&&inrng(l.created_at,r);
+
+  function classify(text){ text=text.toLowerCase(); const e={};
+    for(const k in DESTS) if(text.includes(k)){e.destination=DESTS[k];break;}
+    for(const n of NATS) if(text.includes(n)){e.nationality=n[0].toUpperCase()+n.slice(1);break;}
+    for(const s of STATUSES) if(text.includes(s)){e.status=s;break;}
+    for(const v of VTYPES) if(text.includes(v)){e.vendor_type=v;break;}
+    const m=text.match(/\$?\s*(\d{3,5})/);
+    if(m&&(text.includes('budget')||text.includes('over')||text.includes('above')||text.includes('$'))) e.budget_usd_min=parseInt(m[1]);
+    let tw=null; for(const t of ['today','this week','last week','this month','last month','last 30 days','this year','last year']) if(text.includes(t)){tw=t.replace(/ /g,'_');break;}
+    let lane;
+    if(/^\s*(send|yes|confirm|edit|cancel|no)\b/.test(text)) lane='confirm';
+    else if(/(competitor|competition|rival|market|undercut| vs |versus)/.test(text)) lane='intelligence';
+    else if(/(draft|broadcast|follow up|follow-up|message them|send|reach out|re-engage|reengage|nudge|blast|campaign)/.test(text)) lane='action';
+    else if(/(^| )(hi|hello|hey|thanks|thank you|good morning)( |$)/.test(text)&&text.trim().split(/\s+/).length<=3) lane='smalltalk';
+    else lane='query';
+    return {lane,entities:e,time_window:tw}; }
+  function gbFrom(text,allowed,def){ const C=[['trip_type',['by trip type','by type','per type']],['nationality',['by nationality','per nationality']],['destination',['by destination','per destination','by region']],['status',['by status','per status','by stage']]];
+    for(const[c,ph]of C){ if(allowed.includes(c)&&ph.some(p=>text.includes(p))) return c; } return def; }
+
+  function countLeads(e,tw,gb){ const r=twin(tw),rows=T.leads.filter(l=>lmatch(l,e,r)); const filt=e.destination||e.status||'';
+    let head='**'+rows.length+'** lead'+(rows.length!==1?'s':'')+(filt?' — '+filt:'');
+    if(gb){ const g={}; rows.forEach(l=>{const k=String(l[gb]||'unknown');g[k]=(g[k]||0)+1;});
+      const lines=Object.entries(g).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,v])=>'• '+k+': '+v); return head+' by '+gb+':\n'+lines.join('\n'); }
+    return head+'.'; }
+  function listLeads(e,tw){ const r=twin(tw); let rows=T.leads.filter(l=>lmatch(l,e,r)).sort((a,b)=>a.created_at<b.created_at?1:-1).slice(0,50);
+    if(!rows.length) return 'No matching leads.';
+    return '**'+rows.length+'** match:\n'+rows.slice(0,10).map(l=>'• '+l.name+' ('+l.nationality+') — '+l.destination+', '+money(l.budget_usd)+', '+l.status).join('\n'); }
+  function stale(days,dest){ days=days||3; const bk=booked(),L=Object.fromEntries(T.leads.map(l=>[l.id,l])),out=[];
+    T.quotes.forEach(q=>{ if(q.accepted_at) return; const l=L[q.lead_id]; if(!l||bk.has(l.id)) return; if(dest&&!eq(l.destination,dest)) return;
+      const age=dsince(q.sent_at); if(age!=null&&age>=days) out.push({n:l.name,d:l.destination,a:q.amount_usd,days:age}); });
+    out.sort((a,b)=>b.days-a.days); if(!out.length) return 'No quotes silent ≥'+days+'d. Pipeline is warm.';
+    return '**'+out.length+'** quote'+(out.length!==1?'s':'')+' silent ≥'+days+'d:\n'+out.slice(0,8).map(q=>'• '+q.n+' — '+q.d+', '+money(q.a)+', '+q.days+'d silent').join('\n')+'\nWant me to draft a follow-up?'; }
+  function segment(e){ const r=twin(e.time_window),bk=booked();
+    const rows=T.leads.filter(l=>!bk.has(l.id)&&eq(l.destination,e.destination)&&eq(l.trip_type,e.trip_type)&&(e.min_budget==null||l.budget_usd>=e.min_budget)&&inrng(l.created_at,r));
+    return {ids:rows.map(l=>l.id),size:rows.length}; }
+  function pipeline(tw,gb){ const r=twin(tw),leads=T.leads.filter(l=>inrng(l.created_at,r)),ids=new Set(leads.map(l=>l.id));
+    const quoted=new Set(T.quotes.filter(q=>ids.has(q.lead_id)).map(q=>q.lead_id));
+    const bk=T.bookings.filter(b=>ids.has(b.lead_id)),dep=new Set(bk.map(b=>b.lead_id)),rev=bk.reduce((s,b)=>s+(b.total_usd||0),0);
+    const g={}; leads.forEach(l=>{const k=String(l[gb]||'unknown');const x=g[k]||(g[k]={leads:0,dep:0,rev:0});x.leads++;if(dep.has(l.id))x.dep++;});
+    bk.forEach(b=>{const l=leads.find(x=>x.id===b.lead_id);if(l)g[String(l[gb]||'unknown')].rev+=b.total_usd||0;});
+    const conv=leads.length?Math.round(dep.size/leads.length*100):0;
+    const head='Pipeline: **'+leads.length+'** leads → '+quoted.size+' quoted → '+dep.size+' deposited ('+money(rev)+', '+conv+'% conv).';
+    const lines=Object.entries(g).sort((a,b)=>b[1].leads-a[1].leads).slice(0,5).map(([k,v])=>'• '+k+': '+v.leads+'→'+v.dep+' dep ('+money(v.rev)+')');
+    return head+(lines.length?'\n'+lines.join('\n'):''); }
+  function vendorRank(vt,order){ order=order||'worst'; const V=Object.fromEntries(T.vendors.map(x=>[x.id,x]));
+    const ok=new Set(T.vendors.filter(x=>eq(x.vendor_type,vt)).map(x=>x.id)),agg={};
+    T.vendor_feedback.forEach(f=>{if(ok.has(f.vendor_id))(agg[f.vendor_id]||(agg[f.vendor_id]=[])).push(f.rating_1_5);});
+    let rows=Object.entries(agg).map(([id,rs])=>({v:V[id].name,t:V[id].vendor_type,avg:rs.reduce((a,b)=>a+b,0)/rs.length,n:rs.length}));
+    rows.sort((a,b)=>order==='best'?b.avg-a.avg:a.avg-b.avg); rows=rows.slice(0,5); if(!rows.length) return 'No vendor feedback.';
+    return order[0].toUpperCase()+order.slice(1)+' vendors by rating:\n'+rows.map(r=>'• '+r.v+' ('+r.t+') — '+r.avg.toFixed(1)+'★ ('+r.n+')').join('\n'); }
+  function tripRank(order){ order=order||'worst'; const TR=Object.fromEntries(T.trips.map(x=>[x.id,x])),agg={};
+    T.reviews.forEach(r=>{(agg[r.trip_id]||(agg[r.trip_id]=[])).push(r.rating_1_5);});
+    let rows=Object.entries(agg).map(([id,rs])=>({t:TR[id].name,avg:rs.reduce((a,b)=>a+b,0)/rs.length,n:rs.length}));
+    rows.sort((a,b)=>order==='best'?b.avg-a.avg:a.avg-b.avg); if(!rows.length) return 'No trip reviews.';
+    return order[0].toUpperCase()+order.slice(1)+' trips by rating:\n'+rows.map(r=>'• '+r.t+' — '+r.avg.toFixed(1)+'★ ('+r.n+')').join('\n'); }
+  function compScan(dest){ const key=(dest||'').toLowerCase(),res=(COMPS[key]||DEFCOMP).map(x=>Object.assign({},x));
+    const trips=T.trips.filter(t=>eq(t.destination,dest)),our=trips.length?Math.min.apply(null,trips.map(t=>t.base_price_usd)):null;
+    res.forEach(r=>{if(our&&r.price){r.u=r.price<our;r.delta=r.price-our;}});
+    const head=dest+' competitors'+(our?' (us: '+money(our)+'):':':');
+    return head+'\n'+res.slice(0,6).map(r=>{const flag=r.u?' ⚠️ undercuts by '+money(Math.abs(r.delta)):''; return '• '+r.c+': '+r.p+' — '+(r.price?money(r.price):'n/a')+flag;}).join('\n'); }
+
+  const pend={};
+  function season(){ const m=TODAY.getMonth()+1; if([5,6,7,8,9].includes(m)) return 'peak northern-Pakistan season — high-altitude trips are open now'; if([10,11].includes(m)) return 'shoulder season — passes start closing soon'; return 'off-season for high-altitude trips; planning ahead for summer'; }
+  function copy(dest,angle,deposit){ if(deposit) return 'Hi {{first_name}}! Your {{destination}} trip is ready to lock in — '+season()+'. Secure your spot with a small deposit here: {{asaanpay_deposit_link}} 🏔️\n— Team Destination Pakistan';
+    const tpl={'price nudge':"Hi {{first_name}}! Still thinking about {{destination}}? We can tailor the itinerary to your budget — reply and let us find the right fit.\n— Team Destination Pakistan",
+      'season urgency':'Hi {{first_name}}! A quick note on {{destination}}: '+season()+'. Spots fill fast — reply to keep planning your trip. 🏔️\n— Team Destination Pakistan',
+      'deposit push':"Hi {{first_name}}! Ready to make {{destination}} happen? Reply and we will walk you through the next step to confirm your dates.\n— Team Destination Pakistan"};
+    return tpl[angle]||"Hi {{first_name}}! Still dreaming of {{destination}}? We would love to help you plan it — reply anytime to pick up where we left off.\n— Team Destination Pakistan"; }
+  const angleFrom=t=>/price|discount/.test(t)?'price nudge':/deposit/.test(t)?'deposit push':/season|urgen|closing/.test(t)?'season urgency':'re-engage';
+  const tok=()=>Math.random().toString(16).slice(2,8).toUpperCase();
+  function makeDraft(ids,dest,angle,deposit,revised){ const k=tok(); pend[k]={ids,angle,dest,deposit};
+    const head=revised?'Revised draft ('+ids.length+' leads):':'Segment: **'+ids.length+'** leads.\n\nDraft:';
+    return head+'\n'+copy(dest||'your trip',angle,deposit)+'\n\nReply SEND '+k+' to send to all '+ids.length+', EDIT '+k+' <changes> to revise, or ignore.'; }
+  function confirm(text){ const m=text.match(/^\s*(send|yes|confirm|edit|cancel|no)\b\s*([A-Za-z0-9]{4,8})?\s*(.*)$/i);
+    const verb=(m?m[1]:'').toLowerCase(); let k=(m&&m[2]?m[2]:'').toUpperCase(); const rest=m?m[3].trim():''; const keys=Object.keys(pend); if(!k&&keys.length) k=keys[keys.length-1]; const p=pend[k];
+    if(verb==='send'||verb==='yes'||verb==='confirm'){ if(!p) return 'Nothing pending to confirm. Ask me to draft a follow-up first.'; delete pend[k]; return '✅ Sent to '+p.ids.length+' lead'+(p.ids.length!==1?'s':'')+' (log-only mode).'; }
+    if(verb==='edit'){ if(!p) return 'Nothing pending to edit.'; delete pend[k]; return makeDraft(p.ids,p.dest,angleFrom(rest)||p.angle,p.deposit,true); }
+    if(verb==='cancel'||verb==='no'){ if(p) delete pend[k]; return 'Cancelled — nothing sent.'; }
+    return 'Reply SEND <token>, EDIT <token> <changes>, or CANCEL.'; }
+  function planQuery(text,e,tw){
+    if(/(pipeline|funnel|conversion|convert|revenue)/.test(text)) return ()=>pipeline(tw,gbFrom(text,['destination','trip_type','nationality'],'destination'));
+    if(/stale/.test(text)||(/quote/.test(text)&&/(silent|old|follow|stuck|cold)/.test(text))) return ()=>stale(3,e.destination);
+    if(e.vendor_type||/(vendor|hotel|guide|driver|porter|transport)/.test(text)) return ()=>vendorRank(e.vendor_type,/best/.test(text)?'best':'worst');
+    if(/(trip review|trip feedback|worst trip|best trip|rating|reviews)/.test(text)) return ()=>tripRank(/best/.test(text)?'best':'worst');
+    if(/(list|show|who are|which leads|names)/.test(text)) return ()=>listLeads(e,tw);
+    return ()=>countLeads(e,tw,gbFrom(text,['destination','nationality','trip_type','status'],null)); }
+
+  window.localHandle=function(message){
+    if(Object.keys(pend).length && /^\s*(send|yes|confirm|edit|cancel|no)\b/i.test(message)) return confirm(message);
+    const c=classify(message),e=c.entities,tw=c.time_window,text=message.toLowerCase();
+    if(c.lane==='confirm') return confirm(message);
+    if(c.lane==='smalltalk') return '👋 Here when you need a read on the business — leads, quotes, vendors, competitors.';
+    if(c.lane==='intelligence') return compScan(e.destination||'Hunza');
+    if(c.lane==='action'){ const seg=segment({destination:e.destination,trip_type:e.trip_type,time_window:tw,min_budget:e.budget_usd_min}); if(!seg.size) return 'That segment is empty — no leads without a deposit match those filters.'; return makeDraft(seg.ids,e.destination,angleFrom(text),/deposit/.test(text),false); }
+    return planQuery(text,e,tw)(); };
+})();
+
 const ACK = "On it — pulling that now 🔎";
 const TENANT_NUMBER = "whatsapp:+14155238886";   // Destination Pakistan line
 const OWNER_NUMBER  = "whatsapp:+923001112233";  // whitelisted owner
@@ -215,7 +342,7 @@ async function playScript(){
 function stopPlay(){ cancel=true; playing=false; }
 
 // --- Live mode (works when served from the backend) ---
-let ENGINE='mock', LLM_AVAILABLE=false;
+let ENGINE='mock', LLM_AVAILABLE=false, OFFLINE=false;
 
 function updateEngineUI(){
   const btn=document.getElementById('engine');
@@ -223,8 +350,11 @@ function updateEngineUI(){
   if(ENGINE==='live'){
     btn.textContent='🤖 Engine: Claude (live)';
     presence.textContent='Destination Pakistan · 🤖 Claude';
+  }else if(ENGINE==='offline'){
+    btn.textContent='📴 Engine: In-browser';
+    presence.textContent='Destination Pakistan · online';
   }else{
-    btn.textContent = LLM_AVAILABLE ? '⚡ Engine: Instant (mock)' : '⚡ Engine: Instant (offline)';
+    btn.textContent = LLM_AVAILABLE ? '⚡ Engine: Instant (mock)' : '⚡ Engine: Instant';
     presence.textContent='Destination Pakistan · online';
   }
   btn.disabled=false;
@@ -234,7 +364,7 @@ async function loadInfo(){
     const r=await fetch('./demo/info'); if(!r.ok) throw 0;
     const j=await r.json();
     LLM_AVAILABLE=!!j.llm_available; ENGINE=LLM_AVAILABLE?'live':'mock';
-  }catch(e){ LLM_AVAILABLE=false; ENGINE='mock'; }
+  }catch(e){ LLM_AVAILABLE=false; OFFLINE=true; ENGINE='offline'; }
   updateEngineUI();
 }
 
@@ -244,18 +374,24 @@ async function liveAsk(text){
   await typing('in',350);
   addBubble('in','<span class="ackline">'+esc(ACK)+'</span>');
   const wait=showTyping('in');           // persists for the whole round-trip
-  try{
-    const body=new URLSearchParams({To:TENANT_NUMBER, From:OWNER_NUMBER, Body:text, engine:ENGINE});
-    const res=await fetch('./demo/simulate',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
-    if(!res.ok) throw new Error('http '+res.status);
-    const data=await res.json();
-    wait.remove();
-    const isDraft=/Draft:/i.test(data.reply||'');
-    addBubble('in', fmt(data.reply||'(no reply)', isDraft), {draft:isDraft});
-  }catch(e){
-    wait.remove();
-    addBubble('', 'Live Q&A needs the demo server — run <code>uvicorn app.main:app</code> and open <code>/demo</code>. (▶ Replay works anywhere.)', {system:true});
+  let reply=null;
+  if(ENGINE==='offline'){
+    await sleep(450);
+    reply=localHandle(text);
+  }else{
+    try{
+      const body=new URLSearchParams({To:TENANT_NUMBER, From:OWNER_NUMBER, Body:text, engine:ENGINE});
+      const res=await fetch('./demo/simulate',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+      if(!res.ok) throw new Error('http '+res.status);
+      reply=(await res.json()).reply;
+    }catch(e){
+      OFFLINE=true; ENGINE='offline'; updateEngineUI();
+      reply=localHandle(text);
+    }
   }
+  wait.remove();
+  const isDraft=/\bSEND\s+[A-Z0-9]{4,8}\b/.test(reply||'');
+  addBubble('in', fmt(reply||'(no reply)', isDraft), {draft:isDraft});
 }
 
 document.getElementById('send').onclick=()=>{
@@ -263,8 +399,12 @@ document.getElementById('send').onclick=()=>{
 };
 document.getElementById('msg').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('send').click();});
 document.getElementById('engine').onclick=()=>{
+  if(ENGINE==='offline'){
+    addBubble('', 'Running the in-browser demo. For live 🤖 Claude (real Haiku + Sonnet), serve it: <code>uvicorn app.main:app</code> → open <code>/demo</code>.', {system:true});
+    return;
+  }
   if(!LLM_AVAILABLE){
-    addBubble('', 'Live AI isn’t available here. Set <code>ANTHROPIC_API_KEY</code> and serve via <code>/demo</code> to switch on 🤖 Claude.', {system:true});
+    addBubble('', 'Live AI isn’t available here. Set <code>ANTHROPIC_API_KEY</code> and serve via <code>/demo</code>.', {system:true});
     return;
   }
   ENGINE = ENGINE==='live' ? 'mock' : 'live'; updateEngineUI();

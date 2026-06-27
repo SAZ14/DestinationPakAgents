@@ -118,10 +118,12 @@ uvicorn app.main:app --reload --port 8000
 
 A self-contained, WhatsApp-styled chat page at **`app/static/demo.html`**:
 
-- **Offline** — open the file in any browser and hit "▶ Replay scripted demo".
-  It auto-plays a faithful conversation (the two-message ack pattern, reads,
-  competitor undercut flags, and the draft→`SEND` confirm gate). No server, no
-  credentials — perfect to email a client.
+- **Offline & interactive** — open the file in any browser. Hit "▶ Replay
+  scripted demo" for an auto-played conversation, **or just type your own
+  questions** — `demo.html` ships with an in-browser brain (a faithful port of
+  the mock agent over the embedded demo data), so reads, competitor flags, and
+  the full draft→`SEND` confirm gate all work with no server and no credentials.
+  Perfect to email a client.
 - **Live Q&A** — `uvicorn app.main:app` then open `http://localhost:8000/demo`.
   Type your own questions; the **Engine** button toggles **🤖 Claude (live)** —
   real Haiku (classify) + Sonnet (tool loop) when `ANTHROPIC_API_KEY` is set —
