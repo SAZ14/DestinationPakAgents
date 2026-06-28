@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Asaan Intelligence — Destination Pakistan Concierge (Demo)</title>
+<style>
+  :root {
+    --green: #075e54; --green-light: #25d366; --bubble-out: #d9fdd3;
+    --bubble-in: #ffffff; --bg: #ece5dd; --ops-bg: #0f172a; --ops-card: #1e293b;
+    --ops-line: #334155; --accent: #38bdf8; --warn: #fbbf24; --ok: #34d399; --bad: #f87171;
+    --text: #0f172a; --muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f1f5f9; color: var(--text); }
+  header { background: var(--green); color: #fff; padding: 14px 22px; display: flex;
+    align-items: center; justify-content: space-between; gap: 12px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header .sub { font-size: 12px; opacity: .8; }
+  header button { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  header button:hover { background: rgba(255,255,255,.25); }
+
+  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 52px); }
+  @media (max-width: 860px) { .stage { grid-template-columns: 1fr; height: auto; } }
+
+  /* ---- Customer (WhatsApp) ---- */
+  .phone { display: flex; flex-direction: column; background: var(--bg);
+    background-image: linear-gradient(rgba(229,221,213,.6), rgba(229,221,213,.6));
+    border-right: 1px solid #cbd5e1; min-height: 0; }
+  .phone .bar { background: var(--green); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .phone .bar .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--green-light);
+    display: grid; place-items: center; font-weight: 700; }
+  .phone .bar .who { font-size: 14px; font-weight: 600; }
+  .phone .bar .who small { display: block; font-weight: 400; opacity: .8; font-size: 11px; }
+  .chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 78%; padding: 8px 11px; border-radius: 10px; font-size: 14px; line-height: 1.4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.08); white-space: pre-wrap; word-wrap: break-word; }
+  .msg.in { background: var(--bubble-in); align-self: flex-start; border-top-left-radius: 2px; }
+  .msg.out { background: var(--bubble-out); align-self: flex-end; border-top-right-radius: 2px; }
+  .msg.itin { font-family: ui-monospace, monospace; font-size: 12.5px; max-width: 92%; }
+  .composer { display: flex; gap: 8px; padding: 10px; background: #f0f2f5; }
+  .composer input { flex: 1; border: none; border-radius: 20px; padding: 11px 16px; font-size: 14px; outline: none; }
+  .composer input:disabled { background: #e7eaee; }
+  .composer button { background: var(--green); color: #fff; border: none; width: 44px; height: 44px;
+    border-radius: 50%; cursor: pointer; font-size: 18px; }
+  .composer button:disabled { opacity: .5; cursor: default; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; background: #f0f2f5; }
+  .chips button { background: #fff; border: 1px solid #cbd5e1; border-radius: 14px; padding: 6px 11px;
+    font-size: 12px; cursor: pointer; color: #334155; }
+  .chips button:hover { background: #e2e8f0; }
+  .typing { font-size: 12px; color: var(--muted); align-self: flex-start; padding: 4px 8px; }
+
+  /* ---- Ops Console ---- */
+  .ops { background: var(--ops-bg); color: #e2e8f0; overflow-y: auto; padding: 18px; min-height: 0; }
+  .ops h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent);
+    margin: 0 0 12px; }
+  .card { background: var(--ops-card); border: 1px solid var(--ops-line); border-radius: 12px;
+    padding: 16px; margin-bottom: 16px; }
+  .lead-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge.new { background: #475569; color: #fff; }
+  .badge.qualifying { background: #1e40af; color: #dbeafe; }
+  .badge.qualified { background: #065f46; color: #d1fae5; }
+  .badge.awaiting_approval { background: #92400e; color: #fef3c7; }
+  .badge.sent { background: #047857; color: #d1fae5; }
+  .badge.rejected { background: #7f1d1d; color: #fecaca; }
+  .grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; }
+  .grid .k { color: var(--muted); }
+  .grid .v { color: #f1f5f9; font-weight: 500; }
+  .grid .v.empty { color: #475569; font-weight: 400; }
+  .grid .v.just-set { animation: flash 1.1s ease-out; }
+  @keyframes flash { 0% { background: rgba(56,189,248,.35); } 100% { background: transparent; } }
+  .seg-pill { display: inline-block; background: #0e7490; color: #cffafe; font-size: 11px;
+    padding: 2px 9px; border-radius: 12px; text-transform: uppercase; letter-spacing: .04em; }
+
+  .quote-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .quote-head .title { font-size: 15px; font-weight: 700; color: #fff; }
+  .price { font-size: 22px; font-weight: 800; color: var(--ok); }
+  .price small { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .warn-flag { background: #78350f; color: var(--warn); font-size: 12px; padding: 8px 12px;
+    border-radius: 8px; margin: 10px 0; border: 1px solid #b45309; }
+  .note { font-size: 12px; color: var(--muted); margin: 8px 0; font-style: italic; }
+  .qmsg { background: #0b1220; border: 1px dashed var(--ops-line); border-radius: 8px; padding: 11px;
+    font-size: 13px; line-height: 1.45; margin: 10px 0; color: #cbd5e1; }
+  .itinerary { background: #0b1220; border: 1px solid var(--ops-line); border-radius: 8px; padding: 12px;
+    max-height: 260px; overflow-y: auto; font-size: 12.5px; line-height: 1.5; color: #cbd5e1; }
+  .itinerary h1,.itinerary h2,.itinerary h3 { color: var(--accent); font-size: 13px; margin: 10px 0 4px; }
+  .itinerary strong { color: #fff; }
+  .itinerary ul { margin: 4px 0; padding-left: 18px; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  .actions button { flex: 1; border: none; padding: 12px; border-radius: 9px; font-size: 14px;
+    font-weight: 700; cursor: pointer; }
+  .approve { background: var(--ok); color: #064e3b; }
+  .reject { background: transparent; color: var(--bad); border: 1px solid var(--bad) !important; }
+  .actions button:disabled { opacity: .5; cursor: default; }
+  .sent-banner { background: #064e3b; color: var(--ok); padding: 12px; border-radius: 9px;
+    text-align: center; font-weight: 700; margin-top: 12px; }
+  .empty-ops { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .pulse { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+  .gate { background: #0b1220; border: 1px solid var(--ops-line); border-radius: 8px; padding: 11px 13px;
+    font-size: 12px; color: #94a3b8; margin-bottom: 14px; line-height: 1.5; }
+  .gate b { color: #e2e8f0; }
+  .gate .dot { color: var(--bad); } .gate .dot.ok { color: var(--ok); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Asaan Intelligence</h1>
+    <div class="sub">WhatsApp Travel Concierge — Destination Pakistan · <span id="modeNote">pick a mode →</span></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="watch()">▶ Watch demo</button>
+    <button onclick="goTry()">💬 Try it yourself</button>
+  </div>
+</header>
+
+<div class="stage">
+  <!-- Customer side -->
+  <section class="phone">
+    <div class="bar">
+      <div class="avatar">DP</div>
+      <div class="who">Destination Pakistan<small id="presence">online</small></div>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="chips" id="chips"></div>
+    <div class="composer">
+      <input id="input" placeholder="(press ▶ Watch demo, or 💬 Try it yourself)" autocomplete="off"
+        onkeydown="if(event.key==='Enter')send()" disabled />
+      <button id="sendBtn" onclick="send()" disabled>➤</button>
+    </div>
+  </section>
+
+  <!-- Ops side -->
+  <section class="ops">
+    <h2>⚙ Staff Ops Console</h2>
+    <div class="gate" id="gate"></div>
+    <div class="card">
+      <div class="lead-head">
+        <strong>Lead Record</strong>
+        <span class="badge new" id="statusBadge">new</span>
+      </div>
+      <div class="grid" id="leadGrid"></div>
+    </div>
+    <div id="quoteArea"></div>
+  </section>
+</div>
+
+<script>
+/* =====================================================================
+   Asaan Intelligence — Concierge demo (fully self-contained, offline).
+   LEFT  : customer WhatsApp thread.
+   RIGHT : staff Ops Console — live Lead Record + draft-then-confirm quote.
+   Two modes:
+     • Watch demo      — scripted replay of a real qualify→quote→send run.
+     • Try it yourself — an in-browser concierge brain answers questions,
+                         fills the Lead Record, and once the lead is
+                         qualified, auto-drafts a quote for staff approval.
+   No backend, no API key. Reads auto-run; the customer-facing quote is a
+   DRAFT that only goes out when a human clicks Approve.
+   ===================================================================== */
+
+/* ---- Lead Record fields shown in the Ops Console ---- */
+const FIELDS = [
+  ['name','Name'],['nationality','Nationality'],['segment','Segment'],['num_people','Travellers'],
+  ['month','Month'],['budget_usd','Budget/pp'],['luxury_level','Level'],
+  ['destinations','Destinations'],['dietary','Dietary'],['visa_help','Visa help'],['special_requests','Notes'],
+];
+
+/* ---- Real current package catalog ("from" starting prices, USD/person) ---- */
+const PACKAGES = [
+  {id:"pkg_1", name:"13 Days Culture & Adventure Trip", segment:"culture", duration_days:13, base_price_usd:2100, destinations:["Islamabad","Hunza","Skardu","Fairy Meadows"], summary:"Flagship 13-day culture & adventure loop through northern Pakistan."},
+  {id:"pkg_2", name:"Fairy Meadows + Hunza Valley", segment:"culture", duration_days:10, base_price_usd:1500, destinations:["Fairy Meadows","Hunza"], summary:"Classic 10-day combination of Fairy Meadows and the Hunza Valley."},
+  {id:"pkg_3", name:"The Filmmaker's Journey", segment:"photography", duration_days:13, base_price_usd:2000, destinations:["Hunza","Skardu","Fairy Meadows","Chitral"], summary:"13-day route built for filmmakers and content creators."},
+  {id:"pkg_4", name:"The Soul of Pakistan (Heritage)", segment:"culture", duration_days:13, base_price_usd:2400, destinations:["Lahore","Islamabad","Hunza","Skardu"], summary:"13-day heritage-focused journey across Pakistan."},
+  {id:"pkg_5", name:"South Pakistan – Indus Heritage Route", segment:"culture", duration_days:9, base_price_usd:1500, destinations:["Lahore","Islamabad"], summary:"9-day Indus heritage route through southern Pakistan."},
+  {id:"pkg_6", name:"Batura Trekking Expedition", segment:"trek", duration_days:15, base_price_usd:2000, destinations:["Hunza","Skardu"], summary:"15-day Batura glacier trekking expedition."},
+  {id:"pkg_7", name:"Northern Pakistan Ultimate Adventure", segment:"culture", duration_days:11, base_price_usd:1650, destinations:["Hunza","Skardu","Fairy Meadows","Naran"], summary:"11-day ultimate adventure across northern Pakistan."},
+  {id:"pkg_8", name:"Autumn Photography Trip", segment:"photography", duration_days:12, base_price_usd:1650, destinations:["Hunza","Skardu","Chitral"], summary:"12-day autumn photography trip timed for fall colours."},
+  {id:"pkg_9", name:"Horseback Expedition (experienced riders)", segment:"trek", duration_days:10, base_price_usd:3000, destinations:["Chitral","Hunza"], summary:"10-day horseback expedition for experienced riders."},
+  {id:"pkg_10", name:"Reverts Journey (spiritual/cultural)", segment:"faith", duration_days:12, base_price_usd:1750, destinations:["Lahore","Islamabad","Hunza"], summary:"12-day spiritual & cultural journey for reverts."},
+  {id:"pkg_11", name:"Snow Leopard Expedition", segment:"trek", duration_days:10, base_price_usd:3500, destinations:["Hunza","Skardu"], summary:"10-day snow leopard tracking expedition."},
+  {id:"pkg_12", name:"K2 (Chogori) Base Camp Trek", segment:"trek", duration_days:21, base_price_usd:3000, destinations:["Skardu"], summary:"21-day K2 base camp trek — the flagship expedition."},
+  {id:"pkg_13", name:"Kīmiyā – A Journey Through Pakistan's Soul", segment:"culture", duration_days:13, base_price_usd:2500, destinations:["Lahore","Islamabad","Hunza","Skardu"], summary:"13-day curated journey through Pakistan's soul."},
+  {id:"pkg_14", name:"Nangma Valley & Thallay Broq Trek", segment:"trek", duration_days:11, base_price_usd:1600, destinations:["Skardu"], summary:"11-day Nangma Valley and Thallay Broq trek."},
+];
+
+/* ---- Compact destination knowledge for the offline brain ---- */
+const DEST_INFO = {
+  "Hunza":"Hunza Valley (~2,400m) is ringed by giants like Rakaposhi and Lady Finger — 900-year-old Baltit Fort, the turquoise Attabad Lake, dramatic Passu Cones and the famous Eagle's Nest sunrise. Best May–October (cherry blossom late March–April). 🏔️",
+  "Skardu":"Skardu (~2,200m) is the gateway to the Karakoram — the mirror-like Shangrila & Kachura lakes, Shigar & Khaplu palaces, and the vast Deosai Plateau (open July–Sept). It's also the launch point for K2 and the great Baltoro treks.",
+  "Fairy Meadows":"Fairy Meadows (~3,300m) is an alpine meadow straight in front of Nanga Parbat (8,126m) — golden sunrises, pine forests and rustic cabins. A jeep ride + uphill hike gets you in; best June–September. ✨",
+  "Chitral":"Chitral & the Kalash Valleys are among Pakistan's most culturally unique regions — the Kalash people, colourful festivals, Chitral Fort, and Tirich Mir towering over the Hindu Kush.",
+  "Lahore":"Lahore is Pakistan's cultural heart — Mughal grandeur at the Lahore Fort and Badshahi Mosque, the Walled City, Shalimar Gardens, and legendary street food. Best October–March.",
+  "Islamabad":"Islamabad is the calm, green capital and the main arrival hub (ISB) for northern trips — Faisal Mosque, the Margalla Hills, and UNESCO-listed Taxila nearby.",
+  "Naran":"Naran & Kaghan are the most accessible alpine escape from Islamabad — Lake Saif-ul-Malook, Babusar Top, and easy high passes. Best late June–September.",
+  "Swat":"Swat — 'the Switzerland of Pakistan' — is lush valleys, Kalam's pine forests, Mahodand Lake and deep Gandhara (Buddhist) heritage.",
+  "Kashmir":"Azad Kashmir (Neelum Valley, Arang Kel) is lush, forested and less-travelled — river valleys, hilltop villages and jewel lakes. Some areas need permits, which we arrange.",
+  "K2":"K2 Base Camp via the Baltoro Glacier is the pinnacle of Karakoram trekking — 21 days through a cathedral of 8,000m peaks to Concordia. Demanding, summer only, fully crewed.",
+};
+
+/* ====================== rendering ====================== */
+function bubble(role, text, itin) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'customer' ? 'out' : 'in') + (itin ? ' itin' : '');
+  div.textContent = text;
+  document.getElementById('chat').appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function md(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.*)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^\s*[-*] (.*)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>')
+    .replace(/\n/g,'<br>');
+}
+
+let _prevLead = {};
+function renderLead(lead) {
+  const status = lead.status || 'new';
+  document.getElementById('statusBadge').textContent = status.replace(/_/g,' ');
+  document.getElementById('statusBadge').className = 'badge ' + status;
+  document.getElementById('leadGrid').innerHTML = FIELDS.map(([k,label]) => {
+    let v = lead[k];
+    if (k === 'destinations') v = (v && v.length) ? v.join(', ') : '';
+    if (k === 'visa_help') v = v ? 'yes' : '';
+    if (k === 'budget_usd' && v) v = '$' + v;
+    const empty = (v === null || v === undefined || v === '');
+    const changed = !empty && JSON.stringify(_prevLead[k]) !== JSON.stringify(lead[k]);
+    const flash = changed ? ' just-set' : '';
+    if (k === 'segment' && v) return `<div class="k">${label}</div><div class="v${flash}"><span class="seg-pill">${v}</span></div>`;
+    return `<div class="k">${label}</div><div class="v ${empty?'empty':''}${flash}">${empty?'—':v}</div>`;
+  }).join('');
+  _prevLead = JSON.parse(JSON.stringify(lead));
+  renderGate(lead);
+}
+
+/* Required-to-quote checklist, shown so staff see what's still missing. */
+const REQUIRED = [
+  ['month','dates / month', l => !!l.month || (!!l.start_date && !!l.end_date)],
+  ['people','group size',   l => l.num_people != null],
+  ['where','destination / trip type', l => (l.destinations && l.destinations.length) || !!l.segment],
+  ['budget','rough budget', l => l.budget_usd != null],
+  ['segment','segment',     l => !!l.segment],
+];
+function leadQualified(l){ return REQUIRED.every(([,,fn]) => fn(l)); }
+function renderGate(lead) {
+  const rows = REQUIRED.map(([,label,fn]) => {
+    const ok = fn(lead);
+    return `<span class="dot ${ok?'ok':''}">${ok?'●':'○'}</span> ${label}`;
+  }).join('&nbsp;&nbsp; ');
+  const done = leadQualified(lead);
+  document.getElementById('gate').innerHTML =
+    `<b>Required to quote:</b><br>${rows}` +
+    (done ? '<br><span class="dot ok">●</span> <b>complete — quote drafted for approval.</b>' : '');
+}
+
+function renderQuote(q) {
+  const area = document.getElementById('quoteArea');
+  if (!q) { area.innerHTML = '<div class="card"><div class="empty-ops">No quote yet. Once the lead is qualified (dates/month, group size, destinations, budget, segment), the concierge auto-drafts a quote here for staff approval before anything is sent.</div></div>'; return; }
+  const priceBlock = q.needsHumanPricing
+    ? `<div class="warn-flag">⚠️ Budget is below the matched package — flagged <strong>needs human pricing</strong>. A human sets the price before this can be sent.</div>`
+    : `<div class="price">$${q.priceUsd}<small> /person (from)</small></div>`;
+  let actions = '';
+  if (q.status === 'awaiting_approval') {
+    actions = `<div class="actions">
+      <button class="approve" onclick="approve()" ${q.needsHumanPricing?'disabled':''}>✓ Approve &amp; send</button>
+      <button class="reject" onclick="reject()">✕ Reject</button></div>`;
+  } else if (q.status === 'sent') {
+    actions = `<div class="sent-banner">✓ Approved &amp; sent to customer</div>`;
+  } else if (q.status === 'rejected') {
+    actions = `<div class="note">Quote rejected — lead kept as qualified.</div>`;
+  }
+  area.innerHTML = `<div class="card">
+    <div class="quote-head"><span class="title">${q.packageName || 'Custom trip'}</span></div>
+    ${priceBlock}
+    <div class="note">Match: ${q.matchNote || ''}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">Customer-facing message (draft):</div>
+    <div class="qmsg">${md(q.quoteMessage)}</div>
+    <div style="font-size:12px;color:var(--muted)">Drafted itinerary:</div>
+    <div class="itinerary">${md(q.itineraryMd)}</div>
+    ${actions}
+  </div>`;
+}
+
+function renderAll() { renderLead(lead); renderQuote(quote); }
+
+/* ====================== package matching ====================== */
+function destOverlap(a, b) {
+  const setB = new Set((b || []).map((d) => d.toLowerCase().trim()));
+  return (a || []).reduce((n, d) => (setB.has(d.toLowerCase().trim()) ? n + 1 : n), 0);
+}
+function scorePackage(l, p) {
+  let s = 0;
+  if (l.segment && p.segment === l.segment) s += 100;
+  s += destOverlap(l.destinations, p.destinations) * 20;
+  if (l.duration_days) s += Math.max(0, 15 - Math.abs(p.duration_days - l.duration_days));
+  return s;
+}
+function matchPackage(l) {
+  const same = l.segment ? PACKAGES.filter((p) => p.segment === l.segment) : [];
+  const pool = same.length ? same : PACKAGES;
+  const best = pool.map((p) => ({ p, s: scorePackage(l, p) })).sort((a, b) => b.s - a.s)[0].p;
+  const notes = [];
+  if (!same.length && l.segment) notes.push('No exact "' + l.segment + '" package; matched closest.');
+  let needsHumanPricing = false;
+  if (l.budget_usd != null && l.budget_usd < best.base_price_usd) {
+    needsHumanPricing = true;
+    notes.push('Budget ~$' + l.budget_usd + '/pp is below "' + best.name + '" from $' + best.base_price_usd + '/pp — needs human pricing.');
+  }
+  if (!notes.length) notes.push('Matched "' + best.name + '" (from $' + best.base_price_usd + '/pp).');
+  return { pkg: best, needsHumanPricing, note: notes.join(' ') };
+}
+
+/* Build the staff draft (itinerary + forwardable WhatsApp message). */
+function buildQuote(l) {
+  const m = matchPackage(l);
+  const p = m.pkg;
+  const dests = p.destinations.join(', ');
+  const when = l.month ? ` in ${l.month}` : '';
+  const who = l.name ? `Hi ${l.name},` : 'Hi there,';
+  const dayLines = p.destinations.slice(0, 4)
+    .map((d, i) => `- **Leg ${i + 1} — ${d}:** guided highlights, hand-picked stays, time to explore at your pace.`)
+    .join('\n');
+  const itineraryMd =
+`# ${p.name}
+
+**Duration:** ${p.duration_days} days  ·  **Destinations:** ${dests}
+
+${p.summary}
+
+${dayLines}
+
+_Tailored to ${l.num_people || 'your'} traveller${l.num_people === 1 ? '' : 's'}${l.luxury_level ? ', ' + l.luxury_level + ' level' : ''}${when}. Full day-by-day itinerary finalised by the team before sending._`;
+
+  const quoteMessage = m.needsHumanPricing
+    ? `${who} thanks for reaching out to Destination Pakistan! Based on what you shared we'd build around our "${p.name}" — ${p.duration_days} days across ${dests}. Our team is putting together the best price for your budget and will share it shortly. This is a proposed plan for you to review — shall we tailor it further?`
+    : `${who} thanks for reaching out to Destination Pakistan! Based on what you shared, we'd recommend our "${p.name}" — ${p.duration_days} days across ${dests}. Pricing starts from $${p.base_price_usd} per person. This is a proposed plan for you to review — shall we tailor it further?`;
+
+  return {
+    packageId: p.id, packageName: p.name, priceUsd: p.base_price_usd,
+    needsHumanPricing: m.needsHumanPricing, matchNote: m.note,
+    itineraryMd, quoteMessage, status: 'awaiting_approval',
+  };
+}
+
+/* ====================== offline concierge brain ====================== */
+const COUNTRY = [
+  [/\b(uk|u\.?k\.?|united kingdom|britain|british|england|english|scottish|welsh)\b/, 'United Kingdom'],
+  [/\b(usa|u\.?s\.?a?\.?|united states|america|american)\b/, 'United States'],
+  [/\b(canada|canadian)\b/, 'Canada'], [/\b(australia|australian|aussie)\b/, 'Australia'],
+  [/\b(germany|german|deutschland)\b/, 'Germany'], [/\b(france|french)\b/, 'France'],
+  [/\b(italy|italian)\b/, 'Italy'], [/\b(spain|spanish)\b/, 'Spain'],
+  [/\b(netherlands|dutch|holland)\b/, 'Netherlands'], [/\b(japan|japanese)\b/, 'Japan'],
+  [/\b(china|chinese)\b/, 'China'], [/\b(uae|emirati|dubai|abu dhabi)\b/, 'United Arab Emirates'],
+  [/\b(saudi|ksa)\b/, 'Saudi Arabia'], [/\b(malaysia|malaysian)\b/, 'Malaysia'],
+  [/\b(singapore|singaporean)\b/, 'Singapore'], [/\b(ireland|irish)\b/, 'Ireland'],
+];
+const DEST_MAP = [
+  [/hunza/, 'Hunza'], [/skardu|deosai|shigar|khaplu/, 'Skardu'], [/fairy ?meadows?|nanga parbat/, 'Fairy Meadows'],
+  [/chitral|kalash/, 'Chitral'], [/lahore/, 'Lahore'], [/islamabad|taxila/, 'Islamabad'],
+  [/naran|kaghan|babusar|saif/, 'Naran'], [/swat|kalam|mahodand/, 'Swat'],
+  [/kashmir|neelum|arang/, 'Kashmir'], [/\bk2\b|concordia|baltoro/, 'K2'],
+];
+const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+const MONTH_AB = {jan:'January',feb:'February',mar:'March',apr:'April',jun:'June',jul:'July',aug:'August',sep:'September',sept:'September',oct:'October',nov:'November',dec:'December'};
+const NUM_WORDS = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,a:1,solo:1,couple:2};
+
+const NAME_STOP = new Set(['from','interested','looking','planning','travelling','traveling','going','thinking','hoping','really','very','just','here','now','in','on','at','with','and','the','a','an','so','also','keen','ready','still','about','trying']);
+function detectName(orig) {
+  // Prefix matched case-insensitively (handles "I'm"); the captured token must
+  // still be a Capitalised word so we don't pick up "i'm from..." etc.
+  const m = orig.match(/(?:\bi'?m|\bi am|\bthis is|\bmy name'?s|\bmy name is|\bit'?s|\bname'?s|\bcall me)\s+([A-Za-z]+)/i);
+  if (m && /^[A-Z][a-z]+$/.test(m[1]) && !NAME_STOP.has(m[1].toLowerCase())) return m[1];
+  return null;
+}
+function detectCountry(t) { for (const [re, c] of COUNTRY) if (re.test(t)) return c; return null; }
+function detectDests(t) { const out = []; for (const [re, d] of DEST_MAP) if (re.test(t) && !out.includes(d)) out.push(d); return out; }
+function detectSegment(t) {
+  if (/photograph|filmmaker|film ?maker|content creator|creator|videograph|drone|blogger|youtub|vlog|influenc/.test(t)) return 'photography';
+  if (/\btrek|trekking|\bk2\b|base camp|expedition|climb|mountaineer|summit|baltoro|gondogoro|glacier|snow leopard\b/.test(t)) return 'trek';
+  if (/revert|spiritual|faith|islamic heritage|pilgrim|reconnect/.test(t)) return 'faith';
+  if (/corporate|company|retreat|delegation|team[- ]?building|\bmice\b|organi[sz]ation|offsite/.test(t)) return 'corporate';
+  if (/honeymoon|cultur|heritage|family|sightseeing|holiday|vacation/.test(t)) return 'culture';
+  return null;
+}
+function detectPeople(t) {
+  if (/\b(solo|just me|by myself|alone|only me|on my own)\b/.test(t)) return 1;
+  if (/\b(my (wife|husband|partner|girlfriend|boyfriend|spouse|fianc)|honeymoon|couple|two of us|2 of us|both of us|me and my)\b/.test(t)) return 2;
+  let m = t.match(/\b(\d{1,2})\s*(?:people|persons?|pax|travel+ers?|of us|adults?|guests?|friends?)\b/);
+  if (m) return parseInt(m[1]);
+  m = t.match(/\b(?:group|party|family) of\s*(\d{1,2})\b/) || t.match(/\bfor\s+(\d{1,2})\b/);
+  if (m) return parseInt(m[1]);
+  for (const w in NUM_WORDS) { if (new RegExp('\\b' + w + '\\s*(?:people|persons?|of us|travel+ers?|adults?)\\b').test(t)) return NUM_WORDS[w]; }
+  return null;
+}
+function detectBudget(t) {
+  let m = t.match(/\$\s?(\d[\d,]{2,6})/) ||
+          t.match(/\b(\d[\d,]{2,6})\s*(?:usd|dollars?|\$|per person|pp|each|\/pp|a head|per head)\b/) ||
+          (/budget|spend|around|about|approx|roughly|~|up to/.test(t) ? t.match(/\b(\d[\d,]{2,6})\b/) : null);
+  if (m) { const n = parseInt(m[1].replace(/,/g, '')); if (n >= 300 && n <= 100000) return n; }
+  return null;
+}
+function detectLuxury(t) {
+  if (/\b(luxury|5[- ]?star|five[- ]?star|ultra[- ]?luxe|opulent|finest)\b/.test(t)) return 'luxury';
+  if (/\b(premium|boutique|high[- ]?end|upscale|4[- ]?star|four[- ]?star)\b/.test(t)) return 'premium';
+  if (/\b(standard|mid[- ]?range|comfortable|3[- ]?star|decent)\b/.test(t)) return 'standard';
+  if (/\b(budget|cheap|affordable|backpack|hostel|economical|shoestring)\b/.test(t)) return 'budget';
+  return null;
+}
+function detectMonth(t) {
+  for (const mo of MONTHS) if (new RegExp('\\b' + mo + '\\b').test(t)) return mo[0].toUpperCase() + mo.slice(1);
+  for (const k in MONTH_AB) if (new RegExp('\\b' + k + '\\b').test(t)) return MONTH_AB[k];
+  if (/\bsummer\b/.test(t)) return 'July'; if (/\bspring\b/.test(t)) return 'April';
+  if (/\bautumn|\bfall\b/.test(t)) return 'October'; if (/\bwinter\b/.test(t)) return 'January';
+  return null;
+}
+function detectDuration(t) { const m = t.match(/\b(\d{1,2})\s*(?:-|to|–)?\s*(?:days?|nights?)\b/); return m ? parseInt(m[1]) : null; }
+function detectDietary(t) {
+  if (/vegan/.test(t)) return 'vegan'; if (/vegetarian|veggie/.test(t)) return 'vegetarian';
+  if (/gluten/.test(t)) return 'gluten-free'; if (/halal/.test(t)) return 'halal'; return null;
+}
+
+/* Pull every field we can out of one message into a patch. */
+function extractFields(orig) {
+  const t = orig.toLowerCase();
+  const patch = {};
+  const set = (k, v) => { if (v !== null && v !== undefined && v !== '') patch[k] = v; };
+  set('name', detectName(orig));
+  set('nationality', detectCountry(t));
+  set('segment', detectSegment(t));
+  set('num_people', detectPeople(t));
+  set('budget_usd', detectBudget(t));
+  set('luxury_level', detectLuxury(t));
+  set('month', detectMonth(t));
+  set('duration_days', detectDuration(t));
+  set('dietary', detectDietary(t));
+  if (/visa|passport/.test(t)) patch.visa_help = true;
+  const dests = detectDests(t);
+  if (dests.length) patch.destinations = dests;
+  return patch;
+}
+function applyPatch(l, patch) {
+  for (const [k, v] of Object.entries(patch)) {
+    if (k === 'destinations') {
+      const cur = new Set(l.destinations || []);
+      v.forEach((d) => cur.add(d));
+      l.destinations = [...cur];
+    } else {
+      l[k] = v;
+    }
+  }
+  // A photographer/filmmaker etc. who's clearly planning still needs a segment to quote.
+  if (!l.segment && (l.destinations || []).length && l.num_people != null && l.budget_usd != null) l.segment = 'culture';
+  // Fold the month + special bits into staff notes.
+  const notes = [];
+  if (l.month) notes.push(`${l.duration_days ? l.duration_days + '-day trip' : 'Trip'} in ${l.month}`);
+  if (l.luxury_level) notes.push(`${l.luxury_level} hotels`);
+  if (l.segment === 'photography') notes.push('travel photographer (PR collaboration may apply)');
+  if (l.dietary) notes.push(l.dietary);
+  if (notes.length) l.special_requests = notes.join('; ');
+}
+
+/* The customer-facing reply: answer the question, then nudge toward a quote. */
+function nextNudge(l) {
+  if (l.num_people == null) return 'Roughly how many people would be travelling?';
+  if (!l.month && !(l.start_date && l.end_date)) return 'Which month were you thinking of?';
+  if (!(l.destinations || []).length && !l.segment) return 'Any particular destinations or style of trip in mind?';
+  if (l.budget_usd == null) return "And do you have a rough per-person budget so we match the right trip?";
+  return null;
+}
+
+function conciergeReply(orig, l, justQualified) {
+  const t = orig.toLowerCase();
+  const name = l.name ? l.name + ', ' : '';
+
+  if (justQualified) {
+    const m = matchPackage(l);
+    const priceLine = m.needsHumanPricing
+      ? `Our team will put together the best price for your budget`
+      : `A great starting point is "${m.pkg.name}" (from $${m.pkg.base_price_usd}/person), which we'll tailor to you`;
+    const visaLine = l.visa_help || /united|america|europe|australia|canada|britain/i.test(l.nationality || '')
+      ? ' As a foreign traveller we\'ll also include your visa support letter and guidance. 🛂' : '';
+    return `Wonderful${name ? ', ' + l.name : ''}! 🎉 That gives our team everything they need to prepare a tailored ` +
+      `${l.segment === 'photography' ? 'photography ' : ''}itinerary for ${l.num_people === 1 ? 'you' : 'your group'}` +
+      `${l.month ? ' in ' + l.month : ''}${(l.destinations||[]).length ? ' across ' + l.destinations.join(' & ') : ''}. ` +
+      `${priceLine}, and a final quote for you to review (final pricing is always confirmed in writing).${visaLine}`;
+  }
+
+  let answer = '';
+  // Intent routing — answer the real question first.
+  if (/\b(safe|safety|dangerous|is it ok|secure)\b/.test(t)) {
+    answer = `Great question! Yes — Pakistan's northern tourist regions (Hunza, Skardu, Fairy Meadows, Chitral) are peaceful, well-travelled by internationals, and have an excellent safety track record. We use vetted routes, experienced local guides, trusted partners, and monitor conditions in real time. Solo travellers and women travel comfortably too. 😊`;
+  } else if (/visa|passport/.test(t)) {
+    const nat = l.nationality;
+    answer = `Yes — most foreign visitors apply for Pakistan's e-Visa online at visa.nadra.gov.pk (often processed in 24–48 hours, valid up to 3 months). Some nationalities need an invitation/support letter from a registered tour operator — we provide that plus step-by-step guidance at no extra charge.${nat ? ` For ${nat} travellers it's typically straightforward.` : ''} 🛂 Just apply before booking flights.`;
+  } else if (/discount|cheaper|deal|pr |collab|content creator|free trip|sponsor|barter/.test(t) && /photo|film|creator|content|blog|influenc|discount|collab|pr\b/.test(t)) {
+    answer = `Love that! 📸 Through our PR Collaboration programme, photographers, filmmakers and content creators can travel at a significantly discounted rate (up to half price, depending on audience and content plan) in exchange for posts, stories, tags and mentions. You can also earn by leading group trips. The easiest way to apply is to DM @destinationpakistan on Instagram with your portfolio, or I can flag your details to the team.`;
+  } else if (/deal|offer|promo|discount|season|best time|when should/.test(t)) {
+    answer = `A few seasonal highlights: 🌸 Cherry blossom in Hunza & Skardu (late March–mid April, limited slots, from ~$2,000pp for 12 days); peak summer May–Sept for the north, trekking and Deosai; autumn (Sept–Oct) for golden photography light. Groups of 6+ may qualify for a group rate — the team confirms the best current pricing for your dates.`;
+  } else if (/how (does|do).*(book|booking|pay|deposit|work)|booking|deposit|payment|cancel|refund/.test(t)) {
+    answer = `Here's how it works: you share your trip idea → our team prepares a personalised itinerary and quote (a real human reviews every quote) → a 30% deposit confirms your booking, with the balance collected before/on Day 1. The 30% deposit is non-refundable as it secures hotel and transport reservations. Everything is confirmed in writing before you pay.`;
+  } else {
+    // Destination-specific knowledge, if they named a place.
+    const mentioned = detectDests(t);
+    const known = mentioned.filter((d) => DEST_INFO[d]);
+    if (known.length) {
+      answer = known.slice(0, 2).map((d) => DEST_INFO[d]).join(' ');
+      if (mentioned.length) {
+        const m = matchPackage({ ...l, destinations: mentioned, segment: l.segment });
+        answer += ` Many travellers combine these — our "${m.pkg.name}" covers it from $${m.pkg.base_price_usd}/person.`;
+      }
+    } else if (/\b(hi|hello|hey|salam|assalam|good (morning|evening))\b/.test(t) && t.split(/\s+/).length <= 4) {
+      answer = `Assalam-o-Alaikum! 👋 Welcome to Destination Pakistan. Ask me anything about Pakistan — our trips, the best seasons, visas or safety — or tell me what you have in mind and let's start planning.`;
+    } else if (/thank|thanks|great|perfect|awesome|sounds good/.test(t) && t.split(/\s+/).length <= 5) {
+      answer = `My pleasure! 😊 Whenever you're ready, share your dates, group size and budget and I'll get the team started on a tailored plan.`;
+    } else {
+      answer = `Happy to help with that! Pakistan's northern valleys — Hunza, Skardu, Fairy Meadows, Chitral — are our most-loved routes, alongside trekking, photography and cultural journeys. Tell me a bit about the trip you're imagining and I'll point you to the right fit.`;
+    }
+  }
+
+  const nudge = nextNudge(l);
+  return nudge ? `${answer} ${nudge}` : answer;
+}
+
+/* ====================== shared state + driver ====================== */
+const WELCOME = "Assalam-o-Alaikum! 👋 Welcome to Destination Pakistan. I'm your travel concierge — ask me anything about Pakistan, our trips, visas, deals, or let's start planning your journey.";
+const SAMPLES = [
+  "Is Pakistan safe for tourists?",
+  "Tell me about Hunza and Skardu",
+  "I'm a photographer — any discount?",
+  "I'm Sarah from the UK, 2 of us, Hunza & Skardu, 13 days in July, ~$2500pp, premium hotels",
+];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+let lead, quote, busy = false, mode = null;
+
+function freshLead() {
+  return { name:null, nationality:null, segment:null, num_people:null, month:null,
+    start_date:null, end_date:null, budget_usd:null, luxury_level:null, destinations:[],
+    duration_days:null, dietary:null, visa_help:false, special_requests:null, status:'new' };
+}
+function resetState() { _prevLead = {}; lead = freshLead(); quote = null;
+  document.getElementById('chat').innerHTML = ''; renderAll(); }
+
+function renderChips() {
+  document.getElementById('chips').innerHTML = SAMPLES
+    .map((s) => `<button onclick="quick(this)">${s.replace(/"/g,'&quot;')}</button>`).join('');
+}
+function quick(btn) { const i = document.getElementById('input'); i.value = btn.textContent; send(); }
+
+function setComposer(enabled) {
+  document.getElementById('input').disabled = !enabled;
+  document.getElementById('sendBtn').disabled = !enabled || busy;
+  document.getElementById('input').placeholder = enabled ? 'Type your message…' : '(press ▶ Watch demo, or 💬 Try it yourself)';
+}
+function setBusy(b) {
+  busy = b;
+  document.getElementById('sendBtn').disabled = b || mode !== 'try';
+  document.getElementById('presence').textContent = b ? 'typing…' : 'online';
+  document.getElementById('presence').className = b ? 'pulse' : '';
+}
+
+/* ---------- TRY mode: real (offline) interactive concierge ---------- */
+function goTry() {
+  mode = 'try';
+  document.getElementById('chips').style.display = 'flex';
+  document.getElementById('modeNote').textContent = '💬 Try it — type anything';
+  resetState();
+  bubble('agent', WELCOME);
+  setComposer(true);
+  document.getElementById('input').focus();
+}
+
+async function send() {
+  if (mode !== 'try') return;
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text || busy) return;
+  input.value = '';
+  bubble('customer', text);
+  setBusy(true);
+  await sleep(650 + Math.random() * 500);
+
+  const wasQualified = leadQualified(lead);
+  applyPatch(lead, extractFields(text));
+  const nowQualified = leadQualified(lead);
+  const justQualified = !wasQualified && nowQualified;
+
+  if (nowQualified) {
+    lead.status = quote && quote.status === 'sent' ? 'sent' : 'awaiting_approval';
+    if (!quote || quote.status === 'rejected') quote = buildQuote(lead);
+  } else {
+    lead.status = 'qualifying';
+  }
+
+  const reply = conciergeReply(text, lead, justQualified);
+  setBusy(false);
+  bubble('agent', reply);
+  renderAll();
+}
+
+/* ---------- Approve / Reject the staff draft ---------- */
+function approve() {
+  if (!quote || quote.status !== 'awaiting_approval' || quote.needsHumanPricing) return;
+  quote.status = 'sent';
+  lead.status = 'sent';
+  renderAll();
+  bubble('agent', quote.quoteMessage);
+  setTimeout(() => bubble('agent', quote.itineraryMd, true), 600);
+}
+function reject() {
+  if (!quote) return;
+  quote.status = 'rejected';
+  lead.status = leadQualified(lead) ? 'qualified' : 'qualifying';
+  renderAll();
+}
+
+/* ---------- WATCH mode: scripted replay of a real run ---------- */
+const WATCH = {
+  turns: [
+    { customer: "Is Pakistan safe for tourists?",
+      agent: "Great question! Yes — Pakistan's northern tourist regions (Hunza, Skardu, Fairy Meadows, Chitral) are peaceful, well-travelled by internationals, and have an excellent safety track record. At Destination Pakistan we use vetted routes, experienced local guides, trusted local partners, and we monitor conditions in real time before and during your trip. Solo travellers and women travel comfortably too. 😊 Are you thinking about a particular destination or time of year? And how many people would be travelling?",
+      lead: { segment:null, destinations:[], status:'qualifying' } },
+    { customer: "Tell me about Hunza and Skardu — what makes them special?",
+      agent: "Both are absolute gems! 🏔️ Hunza Valley (~2,400m) is the kind of place that rewires your soul — ringed by giants like Rakaposhi and Lady Finger, with ancient 900-year-old Baltit Fort, the turquoise Attabad Lake, dramatic Passu Cones, and the famous Eagle's Nest sunrise. Skardu (~2,200m) is the gateway to the Karakoram — the mirror-like Shangrila & Kachura lakes, Shigar and Khaplu palaces, and the vast Deosai Plateau (open July–Sept). Best time for both is roughly May–October, with magical cherry/apricot blossoms in late March–April. 🌸 Many travellers combine them — our 13 Days Culture & Adventure Trip covers Islamabad, Hunza, Skardu & Fairy Meadows from $2,100/person. Were you thinking of a particular month, and roughly how many people would be travelling?",
+      lead: { segment:'culture', destinations:['Hunza','Skardu'], status:'qualifying' } },
+    { customer: "I am a travel photographer. Do you have trips for creators, and is there any discount?",
+      agent: "Love that! 📸 Yes — we have dedicated photography routes built around the best light, landscapes, and cultural access, with guides who understand shot composition and logistics. Two great fits: The Filmmaker's Journey (13 days, from $2,000/person) and our Autumn Photography Trip (12 days, from $1,650/person) timed for golden fall colours. 🍁 And yes — through our PR Collaboration programme, creators can travel at a significantly discounted rate (up to half price, depending on audience size and content plan) in exchange for social posts, stories, tags and mentions. To apply, DM @destinationpakistan on Instagram with your portfolio, or I can pass your details to the team. What month are you eyeing, and roughly how many people would be travelling?",
+      lead: { segment:'photography', destinations:['Hunza','Skardu'], status:'qualifying' } },
+    { customer: "Do I need a visa? I am from the UK.",
+      agent: "Yes — as a UK citizen you'll need a Pakistan tourist visa, but it's straightforward! You can apply for the e-Visa online at visa.nadra.gov.pk (typically processed in 24–48 hours, valid up to 3 months). Some applicants need an invitation/support letter from a registered tour operator — and we provide that plus step-by-step guidance as part of our service, at no extra charge. 🛂 Just apply for the visa before booking flights. To get your photography trip moving, what month are you thinking of, and roughly how many people would be travelling?",
+      lead: { nationality:'United Kingdom', visa_help:true, segment:'photography', destinations:['Hunza','Skardu'], status:'qualifying' } },
+    { customer: "Great. Let's plan it. I'm Sarah, 2 of us, Hunza and Skardu, 13 days in July, budget around 2500 USD per person, premium hotels.",
+      agent: "Wonderful, Sarah! 🎉 That gives our team everything they need to prepare a tailored photography itinerary for the two of you — 13 days in July across Hunza and Skardu, premium hotels, around $2,500/person. July is gorgeous up north and a perfect window for Deosai too. 🏔️ A great starting point is The Filmmaker's Journey (13 days, from $2,000/person), which we'll customise to your premium preferences and shot list. Our team will put together a personalised plan and a final quote for you to review (final pricing is always confirmed in writing). As a UK traveller, we'll also include your visa support letter and guidance. 📸",
+      lead: { name:'Sarah', nationality:'United Kingdom', segment:'photography', num_people:2, month:'July', budget_usd:2500, luxury_level:'premium', destinations:['Hunza','Skardu'], visa_help:true, special_requests:'13-day trip in July; premium hotels; travel photographer (PR collaboration may apply)', status:'awaiting_approval' } },
+  ],
+};
+
+async function watch() {
+  mode = 'watch';
+  setComposer(false);
+  document.getElementById('chips').style.display = 'none';
+  document.getElementById('modeNote').textContent = '▶ Recorded walkthrough';
+  resetState();
+  await sleep(700);
+  bubble('agent', WELCOME);
+  await sleep(1100);
+  for (const turn of WATCH.turns) {
+    if (mode !== 'watch') return;
+    bubble('customer', turn.customer);
+    setBusy(true);
+    await sleep(1500);
+    if (mode !== 'watch') return;
+    setBusy(false);
+    bubble('agent', turn.agent);
+    Object.assign(lead, turn.lead);
+    renderLead(lead);
+    await sleep(2200);
+  }
+  if (mode !== 'watch') return;
+  // Lead qualified → concierge auto-drafts the quote for staff approval.
+  quote = buildQuote(lead);
+  renderQuote(quote);
+  await sleep(2600);
+  if (mode !== 'watch') return;
+  // A human approves → the two messages are released to the customer.
+  quote.status = 'sent';
+  lead.status = 'sent';
+  renderAll();
+  await sleep(700);
+  bubble('agent', quote.quoteMessage);
+  await sleep(1000);
+  bubble('agent', quote.itineraryMd, true);
+}
+
+/* ---------- init ---------- */
+renderChips();
+resetState();
+bubble('agent', WELCOME);
+</script>
+</body>
+</html>

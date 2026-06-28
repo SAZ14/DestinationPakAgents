@@ -32,6 +32,7 @@ logger = logging.getLogger("chief_of_staff.app")
 
 
 _DEMO_HTML = Path(__file__).parent / "static" / "demo.html"
+_CONCIERGE_HTML = Path(__file__).parent / "static" / "concierge.html"
 
 # Two demo brains, both with Apify/Twilio blanked so a competitor query can't
 # hang on a live scrape and nothing is actually sent:
@@ -112,6 +113,13 @@ def create_app(*, agent: Agent | None = None, twilio: TwilioClient | None = None
     def demo_page():
         """Serve the WhatsApp-styled demo page (same-origin to /demo/simulate)."""
         return HTMLResponse(_DEMO_HTML.read_text(encoding="utf-8"))
+
+    @app.get("/concierge", response_class=HTMLResponse)
+    def concierge_page():
+        """Serve the customer-facing Concierge demo: a split-screen WhatsApp
+        thread + staff Ops Console. Fully self-contained/offline — no backend
+        calls — so it also works opened straight from disk."""
+        return HTMLResponse(_CONCIERGE_HTML.read_text(encoding="utf-8"))
 
     @app.get("/demo/info")
     def demo_info():
